@@ -7,6 +7,7 @@ namespace App\Pdf;
 use App\Entity\Calendar;
 use App\Entity\EventProperty;
 use App\Entity\User;
+use App\Enum\EventType;
 use App\Exception\ApiProblemException;
 use App\Ics\IcsEvent;
 use App\Ics\IcsEventReader;
@@ -27,6 +28,8 @@ class PdfExportService
 {
     public const int MAX_RANGE_DAYS = 366;
     public const int MAX_EVENTS = 2000;
+    /** Notices are capped separately from events. */
+    public const int MAX_NOTICES = 500;
 
     private const int LEGEND_BATCH = 500;
     private const int MAX_NAME = 200;
@@ -41,6 +44,7 @@ class PdfExportService
         private readonly Environment $twig,
         private readonly DompdfFactory $dompdf,
         private readonly int $maxEvents = self::MAX_EVENTS,
+        private readonly int $maxNotices = self::MAX_NOTICES,
     ) {
     }
 
@@ -84,14 +88,31 @@ class PdfExportService
         Input::assertMaxRange($from, $to, self::MAX_RANGE_DAYS);
 
         $qb = $this->export->buildQuery($calendar, $filter);
-        $count = (int) (clone $qb)->select('COUNT(e.id)')->getQuery()->getSingleScalarResult();
+        $count = (int) (clone $qb)->select('COUNT(e.id)')->andWhere('e.type = :pdfType')->setParameter('pdfType', EventType::Event)->getQuery()->getSingleScalarResult();
         if ($count > $this->maxEvents) {
             throw new ApiProblemException(422, sprintf('A PDF contains at most %d events', $this->maxEvents), EventImportService::TOO_MANY_CODE, 'to');
+        }
+        // The annual overview only shows colours, it has no notices
+        $notices = [];
+        if (PdfLayout::AnnualOverview !== $options->layout) {
+            $noticeQb = (clone $qb)->andWhere('e.type = :pdfType')->setParameter('pdfType', EventType::Notice);
+            $noticeCount = (int) (clone $noticeQb)->select('COUNT(e.id)')->getQuery()->getSingleScalarResult();
+            if ($noticeCount > $this->maxNotices) {
+                throw new ApiProblemException(422, sprintf('A PDF contains at most %d notices', $this->maxNotices), EventImportService::TOO_MANY_CODE, 'to');
+            }
         }
 
         $locale = 'de' === $user->getLanguage() ? 'de' : 'en';
         $firstDayOfWeek = 0 === $user->getFirstDayOfWeek() ? 0 : 1;
         $zone = new \DateTimeZone(Input::canonicalTimezone($calendar->getClub()->getTimezone()) ?? 'UTC');
+
+        if (isset($noticeQb)) {
+            $rows = [];
+            foreach ($this->reader->chunks($noticeQb, $this->maxNotices, true) as $chunk) {
+                array_push($rows, ...$chunk);
+            }
+            $notices = PdfNotices::fromEvents($rows, $locale);
+        }
 
         $entries = [];
         $iconEventIds = [];
@@ -131,12 +152,12 @@ class PdfExportService
         ];
 
         return $model + match ($options->layout) {
-            PdfLayout::Agenda => ['rows' => $this->agendaRows($entries, $locale, $holidayDays)],
+            PdfLayout::Agenda => ['rows' => $this->agendaRows($entries, $locale, $holidayDays, $notices, $from, $to)],
             PdfLayout::MonthGrid => [
-                'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale, contentWidthPt: $options->contentWidthPt(), holidays: $holidayDays),
+                'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale, contentWidthPt: $options->contentWidthPt(), holidays: $holidayDays, notices: $notices, contentHeightPt: $options->contentHeightPt()),
                 'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
             ],
-            PdfLayout::QuarterOverview => ['pages' => $this->quarterPages($from, $to, $entries, $locale, $options, $holidayDays)],
+            PdfLayout::QuarterOverview => ['pages' => $this->quarterPages($from, $to, $entries, $locale, $options, $holidayDays, $notices)],
             PdfLayout::AnnualOverview => [
                 'year' => (int) $from->format('Y'),
                 'months' => PdfAnnualOverview::build((int) $from->format('Y'), $firstDayOfWeek, $entries, $locale, $holidayDays),
@@ -248,9 +269,9 @@ class PdfExportService
      *
      * @return list<array<string, mixed>> pages with their own legend of the properties used on that page
      */
-    private function quarterPages(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, PdfOptions $options, array $holidays): array
+    private function quarterPages(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, PdfOptions $options, array $holidays, array $notices = []): array
     {
-        $pages = PdfQuarterOverview::build($from, $to, $entries, $locale, $options->contentHeightPt(), $options->contentWidthPt(), $holidays);
+        $pages = PdfQuarterOverview::build($from, $to, $entries, $locale, $options->contentHeightPt(), $options->contentWidthPt(), $holidays, $notices);
         foreach ($pages as &$page) {
             $page['legend'] = $this->legend($page['eventIds'], $locale);
         }
@@ -261,18 +282,25 @@ class PdfExportService
     /**
      * @param list<array<string, mixed>>                        $entries
      * @param array<string, array{kind: string, name: ?string}> $holidays
+     * @param list<array<string, mixed>>                        $notices  see PdfNotices::fromEvents()
      *
      * @return list<array{label: string, entries: list<array<string, mixed>>}> entries grouped by month
      */
-    private function agendaRows(array $entries, string $locale, array $holidays = []): array
+    private function agendaRows(array $entries, string $locale, array $holidays = [], array $notices = [], ?\DateTimeImmutable $from = null, ?\DateTimeImmutable $to = null): array
     {
+        // a notice is one row at its first visible day, shown with its whole date range
+        foreach ($notices as $n) {
+            $start = max($n['from'], $from?->format('Y-m-d') ?? $n['from']);
+            $entries[] = ['sortDate' => $start, 'sortTime' => '', 'id' => $n['id'], 'day' => new \DateTimeImmutable($start), 'notice' => $n];
+        }
         // holiday label rows (public: every day, school: first visible day) sort before the events of their day
         foreach ($holidays as $ymd => $h) {
             if (null !== $h['name']) {
                 $entries[] = ['sortDate' => $ymd, 'sortTime' => '', 'id' => '', 'day' => new \DateTimeImmutable($ymd), 'holidayName' => $h['name']];
             }
         }
-        usort($entries, static fn (array $a, array $b): int => [$a['sortDate'], isset($a['holidayName']) ? 0 : 1, $a['sortTime'], $a['id']] <=> [$b['sortDate'], isset($b['holidayName']) ? 0 : 1, $b['sortTime'], $b['id']]);
+        $rank = static fn (array $e): int => isset($e['holidayName']) ? 0 : (isset($e['notice']) ? 1 : 2);
+        usort($entries, static fn (array $a, array $b): int => [$a['sortDate'], $rank($a), $a['sortTime'], $a['id']] <=> [$b['sortDate'], $rank($b), $b['sortTime'], $b['id']]);
 
         $groups = [];
         foreach ($entries as $entry) {
@@ -287,7 +315,9 @@ class PdfExportService
             }
             $entry['weekend'] = PdfDates::isWeekend($day->format('Y-m-d'));
             $entry['shade'] = PdfHolidays::shade($holidays[$day->format('Y-m-d')] ?? null, $entry['weekend']);
-            $entry['dateLabel'] = PdfDates::weekdayShort((int) $day->format('w'), $locale).', '.PdfDates::formatDate($day, $locale);
+            $entry['dateLabel'] = isset($entry['notice'])
+                ? $entry['notice']['dates']
+                : PdfDates::weekdayShort((int) $day->format('w'), $locale).', '.PdfDates::formatDate($day, $locale);
             $groups[$key]['entries'][] = $entry;
         }
 

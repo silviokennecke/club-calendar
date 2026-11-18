@@ -26,6 +26,12 @@
                     <td class="dc">{{ e.dateLabel }}</td>
                     <td colspan="4"><b>{{ e.holidayName }}</b></td>
                 </tr>
+                {% elseif e.notice is defined %}
+                <tr class="{{ e.shade }}">
+                    <td class="dc">{{ e.dateLabel }}</td>
+                    <td>{{ 'all_day'|trans({}, 'pdf', locale) }}</td>
+                    <td colspan="3"><b>{{ 'notice'|trans({}, 'pdf', locale) }}:</b> {{ e.notice.title }}{% if e.notice.note != '' %} ({{ e.notice.note }}){% endif %}{% if e.notice.draft %} <span class="draft">({{ 'draft'|trans({}, 'pdf', locale) }})</span>{% endif %}</td>
+                </tr>
                 {% else %}
                 <tr class="{{ e.shade }}">
                     <td class="dc">{{ e.dateLabel }}</td>

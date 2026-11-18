@@ -25,6 +25,7 @@ final class PdfQuarterOverview
     /** Header, month bar, legend (one line), gaps and row borders that do not scale with the font. */
     private const float FIXED_HEIGHT_PT = 62.0;
     private const float ROW_BORDER_PT = 0.5;
+    private const float NOTICE_GAP_PT = 6.0;
     /** Column width and event cell width as in the template; text is cut by estimated width because dompdf wraps lines with inline images despite nowrap. */
     private const float COLUMN_SHARE = 0.32;
     private const float EVENT_CELL_SHARE = 0.79;
@@ -37,7 +38,7 @@ final class PdfQuarterOverview
      *
      * @return list<array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>, holidayKinds: list<string>}>
      */
-    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, float $contentHeightPt, float $contentWidthPt, array $holidays = []): array
+    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, float $contentHeightPt, float $contentWidthPt, array $holidays = [], array $notices = []): array
     {
         $byDay = [];
         foreach ($entries as $entry) {
@@ -56,14 +57,27 @@ final class PdfQuarterOverview
         $capacity = self::capacity($contentHeightPt);
         $pages = [];
         foreach (array_chunk($months, self::MONTHS_PER_PAGE) as $chunk) {
-            $segments = array_map(static fn (array $m): array => self::segments($m['rows'], $capacity), $chunk);
+            // Notices sit below the columns of the first page of the chunk; their space is taken from the line budget.
+            // The share is capped, the remainder gets a notice-only page, so none is dropped.
+            [$onPage, $rest] = PdfNotices::fit(
+                PdfNotices::touching($notices, $chunk[0]['start'], $chunk[array_key_last($chunk)]['end']),
+                self::MAX_FONT_PT,
+                $contentWidthPt,
+                intdiv($capacity, 3),
+            );
+            $reserve = [] === $onPage ? 0 : PdfNotices::totalLines($onPage, self::MIN_FONT_PT, $contentWidthPt) + 1;
+            $chunkCapacity = max(self::MIN_DAY_LINES + 1, $capacity - $reserve);
+            $segments = array_map(static fn (array $m): array => self::segments($m['rows'], $chunkCapacity), $chunk);
             for ($s = 0, $count = max(array_map('count', $segments)); $s < $count; ++$s) {
                 $pageMonths = [];
                 foreach ($chunk as $i => $month) {
                     $seg = $segments[$i][$s] ?? ['rows' => [], 'lines' => 0];
                     $pageMonths[] = ['label' => $month['label'], 'rows' => $seg['rows'], 'lines' => $seg['lines']];
                 }
-                $pages[] = self::page($pageMonths, $contentHeightPt, $contentWidthPt);
+                $pages[] = self::page($pageMonths, $contentHeightPt, $contentWidthPt, 0 === $s ? $onPage : []);
+            }
+            if ([] !== $rest) {
+                $pages[] = self::noticePage($rest);
             }
         }
 
@@ -72,13 +86,16 @@ final class PdfQuarterOverview
 
     /**
      * @param list<array{label: string, rows: list<array<string, mixed>>, lines: int}> $months
+     * @param list<array<string, mixed>>                                               $notices printed below the columns
      *
-     * @return array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>, holidayKinds: list<string>}
+     * @return array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>, holidayKinds: list<string>, notices: list<array<string, mixed>>}
      */
-    private static function page(array $months, float $contentHeightPt, float $contentWidthPt): array
+    private static function page(array $months, float $contentHeightPt, float $contentWidthPt, array $notices = []): array
     {
         $maxLines = max(array_column($months, 'lines'));
-        $font = self::fontFor($maxLines, $contentHeightPt);
+        // Estimated at the largest font (most wrapping): the real font is never bigger than the one it yields
+        $noticeLines = PdfNotices::totalLines($notices, self::MAX_FONT_PT, $contentWidthPt);
+        $font = self::fontFor($maxLines + $noticeLines, $contentHeightPt, [] === $notices ? 0.0 : self::NOTICE_GAP_PT);
         $lineHeight = round($font * self::LINE_FACTOR, 2);
         $ids = [];
         $kinds = [];
@@ -113,6 +130,16 @@ final class PdfQuarterOverview
             'emojiPt' => round($font * 1.1, 2),
             'eventIds' => array_values($ids),
             'holidayKinds' => array_values(array_filter([PdfHolidays::PUBLIC, PdfHolidays::SCHOOL], static fn (string $k): bool => isset($kinds[$k]))),
+            'notices' => $notices,
+        ];
+    }
+
+    /** @param list<array<string, mixed>> $notices */
+    private static function noticePage(array $notices): array
+    {
+        return [
+            'months' => [], 'fontPt' => 8.0, 'lineHeightPt' => 9.2, 'rowHeightPt' => 0.0, 'emojiPt' => 8.8,
+            'eventIds' => [], 'holidayKinds' => [], 'notices' => $notices,
         ];
     }
 
@@ -155,9 +182,9 @@ final class PdfQuarterOverview
     }
 
     /** Font size in points for a page whose fullest column has $lines lines; line height is proportional. */
-    public static function fontFor(int $lines, float $contentHeightPt): float
+    public static function fontFor(int $lines, float $contentHeightPt, float $extraFixedPt = 0.0): float
     {
-        $perLine = ($contentHeightPt - self::FIXED_HEIGHT_PT - (self::GRID_DAYS + 1) * self::ROW_BORDER_PT) / max(1, $lines) / self::LINE_FACTOR;
+        $perLine = ($contentHeightPt - self::FIXED_HEIGHT_PT - $extraFixedPt - (self::GRID_DAYS + 1) * self::ROW_BORDER_PT) / max(1, $lines) / self::LINE_FACTOR;
 
         return round(min(self::MAX_FONT_PT, max(self::MIN_FONT_PT, $perLine)), 2);
     }
@@ -165,7 +192,7 @@ final class PdfQuarterOverview
     /**
      * @param array<string, list<array<string, mixed>>> $byDay
      *
-     * @return array{label: string, rows: list<array<string, mixed>>, lines: int}
+     * @return array{label: string, start: string, end: string, rows: list<array<string, mixed>>, lines: int}
      */
     private static function month(\DateTimeImmutable $first, string $fromYmd, string $toYmd, array $byDay, string $locale, array $holidays = []): array
     {
@@ -219,6 +246,8 @@ final class PdfQuarterOverview
 
         return [
             'label' => PdfDates::monthName($year, $month, $locale).' '.$year,
+            'start' => $first->format('Y-m-01'),
+            'end' => $first->format('Y-m-t'),
             'rows' => $rows,
             'lines' => $lines,
         ];

@@ -33,7 +33,7 @@
                         {% if cell is null %}
                             <td class="pad">&nbsp;</td>
                         {% else %}
-                            <td class="{{ not cell.inRange ? 'out' : (cell.shade == 'wd' ? 'in' : 'in ' ~ cell.shade) }}">
+                            <td{% if month.cellHeightMm is not null %} style="height: {{ month.cellHeightMm|number_format(1, '.', '') }}mm"{% endif %} class="{{ not cell.inRange ? 'out' : (cell.shade == 'wd' ? 'in' : 'in ' ~ cell.shade) }}">
                                 <div class="num">{{ cell.number }}</div>
                                 {% if cell.holidayName is not null %}<div class="hn">{{ cell.holidayName }}</div>{% endif %}
                                 {% for e in cell.events %}
@@ -52,6 +52,7 @@
                 {% endfor %}
                 </tbody>
             </table>
+            <div style="font-size: 7pt; line-height: 8.75pt;">{% include 'pdf/_notices.html.twig' with {notices: month.notices, locale: locale} only %}</div>
         </div>
     {% endfor %}
 {% endblock %}

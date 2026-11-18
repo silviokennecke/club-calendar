@@ -1,0 +1,8 @@
+{# One notice per line below the calendar; the label is translatable, text only reaches dompdf through auto-escape #}
+{% if notices|length > 0 %}
+    <div class="nts">
+        {%- for n in notices -%}
+            <div class="nt{{ n.draft ? ' dr' : '' }}">{{ 'notice'|trans({}, 'pdf', locale) }} ({{ n.dates }}): {{ n.title }}{% if n.note != '' %} ({{ n.note }}){% endif %}</div>
+        {%- endfor -%}
+    </div>
+{% endif %}

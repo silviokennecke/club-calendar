@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.10'
+  version: '1.11'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -3346,8 +3346,14 @@ paths:
         `agenda` (list). `orientation=auto` is portrait for `month-grid`/`agenda`, landscape for the overviews.
         The output language (`de`/`en`) and the first weekday come from the signed-in user's stored preferences
         (`language`, `firstDayOfWeek`), not from a parameter. Property icons are printed as bundled emoji images
-        and explained in a legend; unknown icons are omitted. At most 2000 events per PDF (422 `too_many_events`,
-        field `to`). Rate limited: 10 per user and 30 per client IP in 10 minutes (checked first, before any
+        and explained in a legend; unknown icons are omitted. Notices (event type `notice`) follow the same filter
+        (period by overlap, `includeDrafts`, `targetGroupIds[]`) and are printed one per line as
+        `Hinweis (<date or from – to>): <title> (<note>)` (`Notice` in English; note line breaks become spaces, no
+        parentheses without a note): below the columns of the page whose months they touch in `quarter-overview`,
+        below the grid of each touched month in `month-grid` (the day rows shrink to make room), as a row with the
+        label and the date range in `agenda`; never in `annual-overview`. The quarter font scales with the notice
+        lines; notices that do not fit the page get a page of their own, none is dropped. At most 2000 events and, counted
+        separately, 500 notices per PDF (422 `too_many_events`, field `to`). Rate limited: 10 per user and 30 per client IP in 10 minutes (checked first, before any
         validation). The response is built in memory (no streaming) with a raised memory and time limit for this route.
       operationId: exportPdf
       parameters:

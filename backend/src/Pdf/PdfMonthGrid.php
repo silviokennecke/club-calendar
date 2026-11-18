@@ -13,6 +13,11 @@ final class PdfMonthGrid
 {
     public const int CELL_CAP = 4;
     public const float FONT_PT = 6.5;
+    public const float NOTICE_FONT_PT = 7.0;
+    private const float DEFAULT_CELL_MM = 29.0;
+    private const float MIN_CELL_MM = 18.0;
+    /** Month bar and weekday header above the grid. */
+    private const float FIXED_PT = 40.0;
     /** Horizontal space of a cell that is not text: cell padding (2 x 2 pt), event left padding (2 pt) and borders. */
     private const float CELL_INSET_PT = 7.0;
 
@@ -22,7 +27,7 @@ final class PdfMonthGrid
      *
      * @return list<array{year: int, month: int, label: string, weeks: list<list<array<string, mixed>|null>>}>
      */
-    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, ?int $firstDayOfWeek, array $entries, string $locale, int $cap = self::CELL_CAP, float $contentWidthPt = 527.0, array $holidays = []): array
+    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, ?int $firstDayOfWeek, array $entries, string $locale, int $cap = self::CELL_CAP, float $contentWidthPt = 527.0, array $holidays = [], array $notices = [], float $contentHeightPt = 502.0): array
     {
         $cellEm = ($contentWidthPt / 7 - self::CELL_INSET_PT) / self::FONT_PT;
         $byDay = [];
@@ -67,15 +72,31 @@ final class PdfMonthGrid
                 $cells[] = null;
             }
 
+            $monthNotices = PdfNotices::touching($notices, sprintf('%04d-%02d-01', $year, $month), $cursor->format('Y-m-t'));
+            $weeks = array_chunk($cells, 7);
             $months[] = [
+                'notices' => $monthNotices,
+                'cellHeightMm' => self::cellHeightMm($monthNotices, count($weeks), $contentWidthPt, $contentHeightPt),
                 'year' => $year,
                 'month' => $month,
                 'label' => PdfDates::monthName($year, $month, $locale).' '.$year,
-                'weeks' => array_chunk($cells, 7),
+                'weeks' => $weeks,
             ];
         }
 
         return $months;
+    }
+
+    /** Rows shrink to leave room for the notice lines below the grid; null = the template default. */
+    private static function cellHeightMm(array $notices, int $weeks, float $contentWidthPt, float $contentHeightPt): ?float
+    {
+        if ([] === $notices) {
+            return null;
+        }
+        $noticePt = PdfNotices::totalLines($notices, self::NOTICE_FONT_PT, $contentWidthPt) * self::NOTICE_FONT_PT * 1.25 + 8.0;
+        $mm = ($contentHeightPt - self::FIXED_PT - $noticePt) / max(1, $weeks) * 25.4 / 72.0;
+
+        return round(max(self::MIN_CELL_MM, min(self::DEFAULT_CELL_MM, $mm)), 1);
     }
 
     /**
