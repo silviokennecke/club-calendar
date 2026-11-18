@@ -15,16 +15,27 @@ A notice is a short message for one day or several days, for example “Shooting
 ## Create a notice
 
 1. Open the **Calendar** or the [event list](help:events/event-list).
-2. Open the menu next to **Create event** and choose **Create notice**.
-3. Enter the name and the date. For several days, also set the **End date**.
+2. Open the menu (the arrow) next to **Create event** and choose **Create notice**.
+
+![Menu next to Create event with the entry Create notice](shot:notice-split-button)
+
+3. Enter the **Name** and the **Start date**. For several days, also set the **End date**. Under **Audiences**, choose who the notice is for if needed.
 4. Click **Save notice**.
+
+![New notice form with name, start date, end date and audiences](shot:notice-form)
 
 Like an event, a notice starts as a **draft** and appears in the feeds only once you publish it. You change, publish and delete it just like an event, see [Edit events](help:events/edit). A notice cannot be turned into an event, and an event cannot be turned into a notice.
 
 ## Where notices appear
 
-- **Calendar:** as a blue banner in the month and week view.
-- **Event list:** marked with **Notice**. The filter above the list shows only events or only notices.
+- **Calendar:** as a blue banner in the month and week view. A notice spanning several days is one continuous banner.
+
+![Month view with a blue notice banner over three days next to an event](shot:notice-month)
+
+- **Event list:** marked with **Notice**. Once the calendar has a notice, the **Filter by type** buttons appear above the table: **All types**, **Events** and **Notices**.
+
+![Event list filtered to notices](shot:notice-list)
+
 - **Web page of a feed** and **My subscription** on the web: as plain text, without a detail page. See [The public view](help:publishing/public-view).
 - **PDF:** printed in the layouts quarter overview, month grid and agenda, but not in the annual overview. See [Export events](help:organize/export).
 

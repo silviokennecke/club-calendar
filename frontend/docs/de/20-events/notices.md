@@ -15,16 +15,27 @@ Ein Hinweis ist eine kurze Mitteilung für einen oder mehrere Tage, zum Beispiel
 ## Hinweis anlegen
 
 1. Öffne den **Kalender** oder die [Terminliste](help:events/event-list).
-2. Öffne das Menü neben **Termin anlegen** und wähle **Hinweis anlegen**.
-3. Trage Namen und Datum ein. Für mehrere Tage setzt du zusätzlich das **Enddatum**.
+2. Öffne das Menü (den Pfeil) neben **Termin anlegen** und wähle **Hinweis anlegen**.
+
+![Menü neben Termin anlegen mit dem Eintrag Hinweis anlegen](shot:notice-split-button)
+
+3. Trage den **Namen** und das **Startdatum** ein. Für mehrere Tage setzt du zusätzlich das **Enddatum**. Unter **Gruppen** wählst du bei Bedarf, für wen der Hinweis gilt.
 4. Klicke auf **Hinweis speichern**.
+
+![Formular Neuer Hinweis mit Name, Startdatum, Enddatum und Gruppen](shot:notice-form)
 
 Wie ein Termin ist ein Hinweis zuerst ein **Entwurf** und erscheint erst in den Feeds, wenn du ihn veröffentlichst. Du änderst, veröffentlichst und löschst ihn wie einen Termin, siehe [Termine bearbeiten](help:events/edit). Ein Hinweis lässt sich nicht in einen Termin umwandeln und ein Termin nicht in einen Hinweis.
 
 ## Wo Hinweise erscheinen
 
-- **Kalender:** als blaues Banner in der Monats- und Wochenansicht.
-- **Terminliste:** mit der Markierung **Hinweis**. Der Filter über der Liste zeigt nur Termine oder nur Hinweise.
+- **Kalender:** als blaues Banner in der Monats- und Wochenansicht. Ein Hinweis über mehrere Tage ist ein durchgehendes Banner.
+
+![Monatsansicht mit einem blauen Hinweis-Banner über drei Tage neben einem Termin](shot:notice-month)
+
+- **Terminliste:** mit der Markierung **Hinweis**. Sobald der Kalender einen Hinweis hat, erscheint über der Tabelle die Auswahl **Nach Art filtern** mit **Alle Arten**, **Termine** und **Hinweise**.
+
+![Terminliste, gefiltert auf Hinweise](shot:notice-list)
+
 - **Webseite eines Feeds** und **Mein Abo** im Web: als einfacher Text, ohne Detailseite. Siehe [Die öffentliche Ansicht](help:publishing/public-view).
 - **PDF:** gedruckt in den Layouts Quartalsübersicht, Monatsraster und Agenda, nicht in der Jahresübersicht. Siehe [Termine exportieren](help:organize/export).
 
