@@ -409,6 +409,16 @@ class McpCalendarMemberTest extends WebTestCase
         $this->assertSame($this->loc->getId(), $ok['locationId']);
     }
 
+    public function testPlainMemberWithRowCanUseNotices(): void
+    {
+        $a = $this->calA->getId();
+        $n = $this->ok('row', 'create_event_draft', ['calendarId' => $a, 'type' => 'notice', 'name' => 'Ferien', 'date' => '2026-08-01']);
+        $this->assertSame('notice', $n['type']);
+        $this->ok('row', 'update_event_draft', ['calendarId' => $a, 'eventId' => $n['id'], 'name' => 'Sommerferien']);
+        $rows = $this->ok('row', 'list_events', ['calendarId' => $a, 'type' => 'notice']);
+        $this->assertSame('notice', $rows['items'][0]['type']);
+    }
+
     public function testWritesToArchivedCalendarAreRefused(): void
     {
         $this->calA->setArchivedAt(new \DateTimeImmutable());

@@ -223,6 +223,51 @@ class McpWriteToolsTest extends WebTestCase
         $this->assertError($this->call($this->editor, 'create_event_draft', ['calendarId' => $cal, 'name' => 'Bad', 'date' => '2026-07-01', 'timeBegin' => '18:00', 'timeEnd' => '20:00', 'locationId' => '00000000-0000-7000-8000-000000000000']), 'unknown_reference');
     }
 
+    public function testNoticeCreateUpdateListAndRules(): void
+    {
+        $cal = $this->calendar->getId();
+        $tg = TestHelper::createTargetGroup($this->em, $this->club, 'Jugend');
+        $loc = TestHelper::createLocation($this->em, $this->club, 'Halle');
+        $n = $this->ok($this->editor, 'create_event_draft', ['calendarId' => $cal, 'type' => 'notice', 'name' => 'Ferien', 'date' => '2026-08-01', 'dateEnd' => '2026-08-05', 'note' => 'Halle zu', 'targetGroupIds' => [$tg->getId()]]);
+        $this->assertSame('notice', $n['type']);
+        $this->assertTrue($n['isDraft']);
+        $this->assertSame('2026-08-05', $n['dateEnd']);
+
+        $e = $this->ok($this->editor, 'create_event_draft', ['calendarId' => $cal, 'name' => 'Training', 'date' => '2026-08-02', 'timeBegin' => '18:00', 'timeEnd' => '19:00']);
+        $this->assertSame('event', $e['type']);
+
+        $this->assertError($this->call($this->editor, 'create_event_draft', ['calendarId' => $cal, 'type' => 'notice', 'name' => 'X', 'date' => '2026-08-01', 'locationId' => $loc->getId()]), 'notice');
+        $this->assertError($this->call($this->editor, 'create_event_draft', ['calendarId' => $cal, 'type' => 'bogus', 'name' => 'X', 'date' => '2026-08-01']), 'type');
+
+        $list = $this->ok($this->editor, 'list_events', ['calendarId' => $cal, 'type' => 'notice']);
+        $this->assertCount(1, $list['items']);
+        $rows = $list['items'];
+        $this->assertSame($n['id'], $rows[0]['id']);
+        $this->assertSame('notice', $rows[0]['type']);
+        $all = $this->ok($this->editor, 'list_events', ['calendarId' => $cal]);
+        $this->assertEqualsCanonicalizing(['event', 'notice'], array_column($all['items'], 'type'));
+
+        $u = $this->ok($this->editor, 'update_event_draft', ['calendarId' => $cal, 'eventId' => $n['id'], 'name' => 'Sommerferien']);
+        $this->assertSame('Sommerferien', $u['name']);
+        $this->assertSame('notice', $u['type']);
+        $this->assertSame('notice', $this->ok($this->editor, 'get_event', ['calendarId' => $cal, 'eventId' => $n['id']])['type']);
+        $this->assertError($this->call($this->editor, 'update_event_draft', ['calendarId' => $cal, 'eventId' => $n['id'], 'locationId' => $loc->getId()]), 'notice');
+        $this->assertTrue($this->ok($this->editor, 'unpublish_event', ['calendarId' => $cal, 'eventId' => $n['id']])['isDraft']);
+    }
+
+    public function testConflictsIgnoreNotices(): void
+    {
+        $loc = TestHelper::createLocation($this->em, $this->club, 'Halle');
+        $res = (new \App\Entity\Resource())->setClub($this->club)->setName('Halle')->setLocation($loc);
+        $this->em->persist($res);
+        $notice = TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Hinweis', 'isDraft' => false]);
+        $notice->setType(\App\Enum\EventType::Notice);
+        $notice->setLocation($loc);
+        $this->em->flush();
+        $r = $this->ok($this->editor, 'check_event_conflicts', ['calendarId' => $this->calendar->getId(), 'locationId' => $loc->getId(), 'date' => '2026-07-01', 'timeBegin' => '19:00', 'timeEnd' => '21:00']);
+        $this->assertSame(['conflicts' => [], 'blocking' => false], $r);
+    }
+
     public function testUpdateDraftOnlyForDrafts(): void
     {
         $cal = $this->calendar->getId();

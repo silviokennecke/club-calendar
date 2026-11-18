@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.11'
+  version: '1.12'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -264,7 +264,7 @@ info:
     | --- | --- | --- | --- |
     | `list_clubs` | read | viewer; member with a permission | clubs with the caller's role; a plain member sees the club only with the calendars they hold a permission for (`calendars`) |
     | `list_calendars` | read | viewer; member with a permission | a plain member sees only their calendars |
-    | `list_events` | read | viewer; calendar | `from`/`to`/`q`/`limit`/`offset` with the caps of `GET …/events`; drafts only for editors and calendar permission holders |
+    | `list_events` | read | viewer; calendar | `from`/`to`/`q`/`limit`/`offset` with the caps of `GET …/events`, optional `type` filter (`event`\|`notice`); every entry carries `type`; drafts only for editors and calendar permission holders |
     | `get_event` | read | viewer; calendar | drafts only for editors and calendar permission holders |
     | `list_target_groups`, `list_locations` | read | viewer; member with a permission | club-scoped, read only |
     | `list_properties`, `list_features` | read | viewer; calendar | calendar-scoped |
@@ -273,8 +273,8 @@ info:
     | `list_resource_events` | read | viewer (no permission access) | `from`/`to` required, `limit`/`offset`; events at the resource's location over all calendars; drafts only for editors |
     | `check_event_conflicts` | read | editor; calendar | without a staff (viewer+) club role the conflicts carry no event id or title; resource conflicts of a planned event (`locationId`, `date`, optional `dateEnd`/times/`isAllDay`/`isDraft` (default false)/`timezone`/`eventId`); never writes; `{conflicts, blocking}`; archived calendars allowed |
     | `list_feeds`, `get_feed` | read | editor (no permission access) | include the shared secret |
-    | `create_event_draft` | write | editor; calendar | always a draft; calendar not archived; no series |
-    | `update_event_draft` | write | editor; calendar | only events that are still drafts (else `event_not_draft`); stays a draft; only this event |
+    | `create_event_draft` | write | editor; calendar | always a draft; calendar not archived; no series; optional `type` (`event` default \| `notice`): a notice (Hinweis) is all-day, optionally multi-day (`dateEnd`), takes only name, date, `dateEnd`, note and `targetGroupIds` (no times, location, badges, extras, template: 422), is shown in the PDF export and the web feed views but not in ICS |
+    | `update_event_draft` | write | editor; calendar | also for notices (type cannot change); only events that are still drafts (else `event_not_draft`); stays a draft; only this event |
     | `unpublish_event` | write | editor; calendar | sets a published event back to draft (only this event; an event that already is a draft is returned unchanged); calendar not archived; cannot publish |
     | `create_target_group`, `create_location` | write | editor (no permission access) | club-scoped |
     | `create_property`, `create_feature` | write | editor; calendar | calendar-scoped, calendar not archived |
