@@ -37,6 +37,7 @@ function parseValues(v: unknown): EventFormValues | null {
   )
     return null;
   return {
+    type: o.type === "notice" ? "notice" : "event",
     name: o.name,
     date: o.date as string,
     dateEnd: o.dateEnd as string,

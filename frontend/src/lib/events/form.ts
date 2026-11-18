@@ -3,7 +3,7 @@
  * Dates are ISO strings ("YYYY-MM-DD"), times "HH:MM" as the native inputs deliver them.
  */
 import { isValidIso, type IsoDate } from "@/lib/calendar";
-import type { CalendarEvent, EventTemplate } from "@/lib/types";
+import type { CalendarEvent, EventKind, EventTemplate } from "@/lib/types";
 
 export type EventStatus = "draft" | "published";
 
@@ -11,6 +11,8 @@ export type EventStatus = "draft" | "published";
 export const NOTE_MAX = 2000;
 
 export interface EventFormValues {
+  /** Fixed at creation; a notice is all-day, without location, badges, extras and times. */
+  type: EventKind;
   name: string;
   date: string;
   /** Empty for single-day events. */
@@ -35,6 +37,7 @@ export const DEFAULT_TIME_END = "21:00";
 
 export function emptyEventValues(date?: string | null): EventFormValues {
   return {
+    type: "event",
     name: "",
     date: date && isValidIso(date) ? date : "",
     dateEnd: "",
@@ -51,6 +54,11 @@ export function emptyEventValues(date?: string | null): EventFormValues {
   };
 }
 
+/** A new notice: an all-day entry that starts as a draft. */
+export function emptyNoticeValues(date?: string | null): EventFormValues {
+  return { ...emptyEventValues(date), type: "notice", isAllDay: true };
+}
+
 function shortTime(time: string | null | undefined): string {
   const m = /^(\d{1,2}):(\d{2})/.exec(time ?? "");
   return m ? `${m[1].padStart(2, "0")}:${m[2]}` : "";
@@ -60,11 +68,13 @@ function shortTime(time: string | null | undefined): string {
 export function valuesFromEvent(ev: CalendarEvent): EventFormValues {
   const date = ev.date.slice(0, 10);
   const end = ev.dateEnd ? ev.dateEnd.slice(0, 10) : "";
+  const notice = ev.type === "notice";
   return {
+    type: notice ? "notice" : "event",
     name: ev.name,
     date,
     dateEnd: end && end !== date ? end : "",
-    isAllDay: !!ev.isAllDay,
+    isAllDay: notice || !!ev.isAllDay,
     timeBegin: shortTime(ev.timeBegin) || DEFAULT_TIME_BEGIN,
     timeEnd: shortTime(ev.timeEnd) || DEFAULT_TIME_END,
     status: ev.isDraft ? "draft" : "published",
@@ -187,7 +197,15 @@ export interface EventPayload {
   /** "" = no note. */
   note: string;
   eventTemplateId?: string;
+  /** Only sent when creating a notice. */
+  type?: EventKind;
 }
+
+/** What a notice may carry (the backend rejects everything else). */
+export type NoticePayload = Pick<
+  EventPayload,
+  "name" | "date" | "dateEnd" | "isDraft" | "targetGroupIds" | "note" | "type"
+>;
 
 /**
  * Request body for POST / PATCH. An end date equal to the start is sent as null (single day);
@@ -210,6 +228,22 @@ export function toEventPayload(v: EventFormValues): EventPayload {
   };
   if (v.eventTemplateId) payload.eventTemplateId = v.eventTemplateId;
   return payload;
+}
+
+/**
+ * Request body of a notice: only name, dates, note, audiences and draft flag; `type` only on
+ * creation (it cannot be changed later).
+ */
+export function toNoticePayload(v: EventFormValues, isNew: boolean): Partial<NoticePayload> {
+  return {
+    name: v.name.trim(),
+    date: v.date,
+    dateEnd: isMultiDayValues(v) ? v.dateEnd : null,
+    isDraft: v.status === "draft",
+    targetGroupIds: v.targetGroupIds,
+    note: v.note,
+    ...(isNew && { type: "notice" as const }),
+  };
 }
 
 function sameSet(a: string[], b: string[]): boolean {

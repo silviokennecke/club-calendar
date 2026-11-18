@@ -14,10 +14,12 @@ import {
   describeSeriesRule,
   dropUnknownReferences,
   emptyEventValues,
+  emptyNoticeValues,
   formatWeekdayDate,
   isEventValid,
   isFormDirty,
   toEventPayload,
+  toNoticePayload,
   validateEvent,
   valuesFromEvent,
   valuesFromTemplate,
@@ -101,6 +103,7 @@ export default function EventFormModal() {
   const isNew = !eventId;
   const presetDate = params.get("date");
   const templateId = params.get("templateId");
+  const newNotice = isNew && params.get("type") === "notice";
   const gate = isNew ? createGate(page) : null;
 
   const eventQuery = useQuery<CalendarEvent>({
@@ -112,9 +115,10 @@ export default function EventFormModal() {
   const templatesQuery = useQuery<EventTemplate[]>({
     queryKey: ["templates", page.calendarId],
     queryFn: () => apiGet<EventTemplate[]>(`/api/calendars/${page.calendarId}/templates`),
-    enabled: isNew && !!templateId,
+    enabled: isNew && !!templateId && !newNotice,
   });
-  const template = templateId ? templatesQuery.data?.find((x) => x.id === templateId) : undefined;
+  const template =
+    templateId && !newNotice ? templatesQuery.data?.find((x) => x.id === templateId) : undefined;
 
   // A deep link to an event: show the calendar at the event's month below the dialog.
   const eventDate = eventQuery.data?.date.slice(0, 10);
@@ -128,10 +132,12 @@ export default function EventFormModal() {
     page.calendarLoading ||
     gate === "loading" ||
     (!isNew && eventQuery.isPending && !eventQuery.isError) ||
-    (isNew && !!templateId && templatesQuery.isPending && !templatesQuery.isError);
+    (isNew && !!templateId && !newNotice && templatesQuery.isPending && !templatesQuery.isError);
 
-  const newTitle = t("events.form.newTitle");
-  const closeNew = t("events.form.closeNew");
+  const noticeKeys = newNotice || eventQuery.data?.type === "notice";
+  const nk = noticeKeys ? "events.notice" : "events.form";
+  const newTitle = t(`${nk}.newTitle`);
+  const closeNew = t(`${nk}.closeNew`);
 
   if (gate === "archived" || gate === "forbidden" || gate === "failed") {
     return (
@@ -192,14 +198,16 @@ export default function EventFormModal() {
   }
 
   const initial: EventFormValues = isNew
-    ? template
-      ? valuesFromTemplate(template, presetDate)
-      : emptyEventValues(presetDate)
+    ? newNotice
+      ? emptyNoticeValues(presetDate)
+      : template
+        ? valuesFromTemplate(template, presetDate)
+        : emptyEventValues(presetDate)
     : valuesFromEvent(eventQuery.data!);
 
   return (
     <EventEditor
-      key={eventId ?? `new-${templateId ?? ""}-${presetDate ?? ""}`}
+      key={eventId ?? `new-${newNotice ? "notice" : (templateId ?? "")}-${presetDate ?? ""}`}
       initial={initial}
       event={isNew ? undefined : eventQuery.data}
       template={template}
@@ -223,8 +231,10 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const { t } = useTranslation();
   const locale = useLocale();
   const isNew = !event;
+  const isNotice = initial.type === "notice";
+  const nk = isNotice ? "events.notice" : "events.form";
   const readOnly = page.readOnly;
-  const suggestTemplates = isNew && !readOnly;
+  const suggestTemplates = isNew && !readOnly && !isNotice;
   // Same key and function as in EventFormModal: the cache is shared. Failing or loading = no suggestions.
   const templatesQuery = useQuery<EventTemplate[]>({
     queryKey: ["templates", page.calendarId],
@@ -249,15 +259,23 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   }
   const liveConflicts = useEventConflicts(
     page.calendarId,
-    readOnly ? null : conflictRequest(values, event?.timezone ?? page.timeZone, event?.id),
+    readOnly || isNotice
+      ? null
+      : conflictRequest(values, event?.timezone ?? page.timeZone, event?.id),
   );
 
   const dirty = !readOnly && isFormDirty(initial, values);
   // The scope question only makes sense with other events in the series.
-  const series = event?.series && event.series.eventCount > 1 ? event.series : null;
+  const series = !isNotice && event?.series && event.series.eventCount > 1 ? event.series : null;
   const changed = changedEventFields(toEventPayload(initial), toEventPayload(values));
   const unsaved = useUnsavedChanges(dirty);
-  const draft = useEventDraft(page.calendarId, event?.id ?? null, initial, values, !readOnly);
+  const draft = useEventDraft(
+    page.calendarId,
+    event?.id ?? (isNotice ? "new-notice" : null),
+    initial,
+    values,
+    !readOnly,
+  );
   // Start in the first field (the heading when read-only).
   useModalInitialFocus(FIELD_IDS.name, !readOnly);
 
@@ -280,10 +298,11 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   function restoreDraft() {
     const stored = draft.takePending();
     if (!stored) return;
+    const typed = { ...stored, type: initial.type };
     setValues(
       res.failed
-        ? stored
-        : dropUnknownReferences(stored, {
+        ? typed
+        : dropUnknownReferences(typed, {
             locations: res.locations.map((x) => x.id),
             properties: res.properties.map((x) => x.id),
             features: res.features.map((x) => x.id),
@@ -319,7 +338,11 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
           : apiPost<{ id?: string }>(`/api/calendars/${page.calendarId}/events`, body);
       // "all": only what the user changed is applied to the other events of the series
       const body: PatchBody =
-        scope === "all" ? { ...changed, scope: "all" } : toEventPayload(values);
+        scope === "all"
+          ? { ...changed, scope: "all" }
+          : isNotice
+            ? toNoticePayload(values, isNew)
+            : toEventPayload(values);
       const saved = await saveDroppingDeletedReferences(
         qc,
         page,
@@ -346,7 +369,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       );
       const savedId = event?.id ?? saved?.id;
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
-      toast.success(scope === "all" ? t("events.seriesScope.savedAll") : t("events.form.saved"));
+      toast.success(scope === "all" ? t("events.seriesScope.savedAll") : t(`${nk}.saved`));
       // Back on the page, focus the saved event (if it is shown there).
       focusAfterModalClose(savedId ? eventSelector(savedId) : null);
       draft.clear();
@@ -373,7 +396,11 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       await apiDelete(`/api/calendars/${page.calendarId}/events/${event.id}${query}`);
       qc.removeQueries({ queryKey: ["events", page.calendarId, "one", event.id] });
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
-      toast.success(scope === "all" ? t("events.seriesScope.deletedAll") : t("events.delete.done"));
+      toast.success(
+        scope === "all"
+          ? t("events.seriesScope.deletedAll")
+          : t(isNotice ? "events.notice.deleteDone" : "events.delete.done"),
+      );
       setDeleteOpen(false);
       draft.clear();
       unsaved.allow();
@@ -384,10 +411,10 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   }
 
   const title = readOnly
-    ? t("events.form.viewTitle")
+    ? t(`${nk}.viewTitle`)
     : isNew
-      ? t("events.form.newTitle")
-      : t("events.form.editTitle");
+      ? t(`${nk}.newTitle`)
+      : t(`${nk}.editTitle`);
 
   const summary = visible.map((e) => ({
     fieldId: FIELD_IDS[e.field],
@@ -399,7 +426,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       size="xl"
       form
       title={title}
-      subtitle={isNew ? t("events.form.newSubtitle") : page.calendar?.name}
+      subtitle={isNew ? t(`${nk}.newSubtitle`) : page.calendar?.name}
       headExtra={
         event && (
           <span className="ap-row">
@@ -409,11 +436,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
         )
       }
       closeLabel={
-        readOnly
-          ? t("events.form.close")
-          : isNew
-            ? t("events.form.closeNew")
-            : t("events.form.closeEdit")
+        readOnly ? t("events.form.close") : isNew ? t(`${nk}.closeNew`) : t(`${nk}.closeEdit`)
       }
       onClose={leave}
     >
@@ -437,7 +460,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       )}
       {readOnly && (
         <Banner tone="warning" icon="lock">
-          {page.isArchived ? t("events.form.readOnly") : t("shell.roleReadOnly")}
+          {page.isArchived ? t(`${nk}.readOnly`) : t("shell.roleReadOnly")}
         </Banner>
       )}
       {presetDate && values.date === presetDate && !template && (
@@ -448,7 +471,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       {template && (
         <Banner tone="info">{t("events.form.templateTaken", { name: template.name })}</Banner>
       )}
-      {event?.series && (
+      {!isNotice && event?.series && (
         <Banner
           tone="info"
           icon="repeat"
@@ -473,7 +496,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
         <Banner tone="info">{t("events.form.publishedNotice")}</Banner>
       )}
       {saveFailed && <Banner tone="danger">{t("events.form.saveFailed")}</Banner>}
-      <ErrorSummary title={t("events.form.errorTitle")} errors={summary} focusSignal={submits} />
+      <ErrorSummary title={t(`${nk}.errorTitle`)} errors={summary} focusSignal={submits} />
 
       <form className="ap-form" style={{ gap: "var(--space-6)" }} noValidate onSubmit={onSubmit}>
         <fieldset disabled={readOnly} className="ap-stack ap-stack--lg m-0 min-w-0 border-0 p-0">
@@ -509,24 +532,26 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                 <TextInput
                   value={values.name}
                   autoComplete="off"
-                  placeholder={t("events.form.namePlaceholder")}
+                  placeholder={t(`${nk}.namePlaceholder`)}
                   onChange={(e) => set("name", e.target.value)}
                   onBlur={blur("name")}
                 />
               )}
             </Field>
-            <label className="ap-check">
-              <input
-                type="checkbox"
-                checked={values.isAllDay}
-                aria-describedby="ev-allday-hint"
-                onChange={(e) => set("isAllDay", e.target.checked)}
-              />
-              <span>
-                {t("events.form.allDay")}
-                <small id="ev-allday-hint">{t("events.form.allDayHint")}</small>
-              </span>
-            </label>
+            {!isNotice && (
+              <label className="ap-check">
+                <input
+                  type="checkbox"
+                  checked={values.isAllDay}
+                  aria-describedby="ev-allday-hint"
+                  onChange={(e) => set("isAllDay", e.target.checked)}
+                />
+                <span>
+                  {t("events.form.allDay")}
+                  <small id="ev-allday-hint">{t("events.form.allDayHint")}</small>
+                </span>
+              </label>
+            )}
             <fieldset className="ap-fieldset">
               <legend className="ap-sr">{t("events.form.start")}</legend>
               <div className="ap-inputrow">
@@ -598,28 +623,30 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
             </fieldset>
           </section>
 
-          <section className="ap-panel ap-form-section" aria-labelledby="sec-place">
-            <h2 className="t-h2" id="sec-place">
-              {t("events.form.sections.place")}
-            </h2>
-            <LocationSection
-              locations={res.locations}
-              value={values.locationId}
-              onChange={(id) => set("locationId", id)}
-              onCreate={res.createLocation}
-              readOnly={readOnly}
-              canCreate={page.roleCanManageClub}
-            />
-            <ResourceConflictList
-              conflicts={saveConflicts ?? liveConflicts.conflicts}
-              failed={saveConflicts !== null}
-            />
-            <LocationMap locations={res.locations} value={values.locationId} />
-          </section>
+          {!isNotice && (
+            <section className="ap-panel ap-form-section" aria-labelledby="sec-place">
+              <h2 className="t-h2" id="sec-place">
+                {t("events.form.sections.place")}
+              </h2>
+              <LocationSection
+                locations={res.locations}
+                value={values.locationId}
+                onChange={(id) => set("locationId", id)}
+                onCreate={res.createLocation}
+                readOnly={readOnly}
+                canCreate={page.roleCanManageClub}
+              />
+              <ResourceConflictList
+                conflicts={saveConflicts ?? liveConflicts.conflicts}
+                failed={saveConflicts !== null}
+              />
+              <LocationMap locations={res.locations} value={values.locationId} />
+            </section>
+          )}
 
           <section className="ap-panel ap-form-section" aria-labelledby="sec-tags">
             <h2 className="t-h2" id="sec-tags">
-              {t("events.form.sections.tags")}
+              {isNotice ? t("events.notice.sectionTags") : t("events.form.sections.tags")}
             </h2>
             <AssignmentFields
               resources={res}
@@ -628,6 +655,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               readOnly={readOnly}
               canCreateTargetGroups={page.roleCanManageClub}
               variant="combobox"
+              audiencesOnly={isNotice}
             />
           </section>
 
@@ -697,7 +725,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
             )
           ) : (
             <Button variant="ghost-danger" icon="trash" onClick={() => setDeleteOpen(true)}>
-              {t("events.form.delete")}
+              {t(`${nk}.delete`)}
             </Button>
           )}
           {!readOnly && (
@@ -709,7 +737,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               loading={saving}
               loadingLabel={t("events.form.saving")}
             >
-              {t("events.form.save")}
+              {t(`${nk}.save`)}
             </Button>
           )}
         </div>
@@ -720,12 +748,16 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
           icon="trash"
-          title={t("events.delete.title", { name: event.name })}
-          description={t("events.delete.text", {
+          title={t(isNotice ? "events.notice.deleteTitle" : "events.delete.title", {
+            name: event.name,
+          })}
+          description={t(isNotice ? "events.notice.deleteText" : "events.delete.text", {
             date: formatWeekdayDate(event.date.slice(0, 10), locale),
           })}
-          consequence={t("events.delete.consequence")}
-          confirmLabel={t("events.delete.confirm")}
+          consequence={t(
+            isNotice ? "events.notice.deleteConsequence" : "events.delete.consequence",
+          )}
+          confirmLabel={t(isNotice ? "events.notice.delete" : "events.delete.confirm")}
           onConfirm={() => onDelete("this")}
         />
       )}

@@ -21,6 +21,8 @@ interface AssignmentFieldsProps {
   targetGroupsHint?: ReactNode;
   /** `combobox`: only assigned entries as chips plus an autosuggest add chip (event form). */
   variant?: "toggle" | "combobox";
+  /** Only the audiences (notices have no badges and extras). */
+  audiencesOnly?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export function AssignmentFields({
   canCreateTargetGroups = true,
   targetGroupsHint,
   variant = "toggle",
+  audiencesOnly,
 }: AssignmentFieldsProps) {
   const { t } = useTranslation();
 
@@ -51,25 +54,29 @@ export function AssignmentFields({
   if (variant === "combobox") {
     return (
       <>
-        <ChipCombobox
-          label={t("events.form.properties")}
-          options={res.properties.map((p) => ({
-            id: p.id,
-            label: p.icon ? `${p.icon} ${p.name}` : p.name,
-          }))}
-          selected={value.propertyIds}
-          onChange={(ids) => onChange("propertyIds", ids)}
-          onCreate={readOnly ? undefined : (name) => create(res.createProperty, name)}
-          addLabel={t("events.form.createProperty")}
-        />
-        <ChipCombobox
-          label={t("events.form.features")}
-          options={res.features.map((f) => ({ id: f.id, label: f.name }))}
-          selected={value.featureIds}
-          onChange={(ids) => onChange("featureIds", ids)}
-          onCreate={readOnly ? undefined : (name) => create(res.createFeature, name)}
-          addLabel={t("events.form.createFeature")}
-        />
+        {!audiencesOnly && (
+          <>
+            <ChipCombobox
+              label={t("events.form.properties")}
+              options={res.properties.map((p) => ({
+                id: p.id,
+                label: p.icon ? `${p.icon} ${p.name}` : p.name,
+              }))}
+              selected={value.propertyIds}
+              onChange={(ids) => onChange("propertyIds", ids)}
+              onCreate={readOnly ? undefined : (name) => create(res.createProperty, name)}
+              addLabel={t("events.form.createProperty")}
+            />
+            <ChipCombobox
+              label={t("events.form.features")}
+              options={res.features.map((f) => ({ id: f.id, label: f.name }))}
+              selected={value.featureIds}
+              onChange={(ids) => onChange("featureIds", ids)}
+              onCreate={readOnly ? undefined : (name) => create(res.createFeature, name)}
+              addLabel={t("events.form.createFeature")}
+            />
+          </>
+        )}
         <ChipCombobox
           label={t("events.form.targetGroups")}
           options={res.targetGroups.map((g) => ({ id: g.id, label: g.name }))}

@@ -331,6 +331,12 @@ export default function EventsListPage() {
                   onSelect: () => navigate(page.routes.pickTemplate(), { state: modalState }),
                 },
                 {
+                  key: "notice",
+                  icon: "info" as const,
+                  label: t("events.notice.create"),
+                  onSelect: () => navigate(page.routes.noticeForm(), { state: modalState }),
+                },
+                {
                   key: "import",
                   icon: "upload" as const,
                   label: t("calendar.import"),

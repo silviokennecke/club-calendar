@@ -20,6 +20,7 @@ interface CalendarToolbarProps {
   /** Create actions; omitted when the calendar is read-only. */
   onCreate?: () => void;
   onCreateFromTemplate?: () => void;
+  onCreateNotice?: () => void;
   importHref?: string;
 }
 
@@ -40,6 +41,7 @@ export function CalendarToolbar({
   archived,
   onCreate,
   onCreateFromTemplate,
+  onCreateNotice,
   importHref,
 }: CalendarToolbarProps) {
   const { t } = useTranslation();
@@ -80,6 +82,16 @@ export function CalendarToolbar({
                       icon: "layers" as const,
                       label: t("calendar.fromTemplate"),
                       onSelect: onCreateFromTemplate,
+                    },
+                  ]
+                : []),
+              ...(onCreateNotice
+                ? [
+                    {
+                      key: "notice",
+                      icon: "info" as const,
+                      label: t("events.notice.create"),
+                      onSelect: onCreateNotice,
                     },
                   ]
                 : []),

@@ -125,6 +125,7 @@ const event: CalendarEvent = {
 describe("valuesFromEvent", () => {
   it("maps a multi-day all-day event", () => {
     expect(valuesFromEvent(event)).toEqual({
+      type: "event",
       name: "Vereinsmeisterschaft",
       date: "2026-10-10",
       dateEnd: "2026-10-11",
@@ -166,6 +167,7 @@ describe("valuesFromTemplate", () => {
 
   it("takes over name, times, location and assignments as a draft", () => {
     expect(valuesFromTemplate(tpl, "2026-10-15")).toEqual({
+      type: "event",
       name: "Training Luftgewehr",
       date: "2026-10-15",
       dateEnd: "",
@@ -295,6 +297,7 @@ describe("applyTemplateToValues", () => {
 
   it("overwrites everything the template has and keeps dates and status", () => {
     expect(applyTemplateToValues(current, tpl)).toEqual({
+      type: "event",
       name: "Training Luftgewehr",
       date: "2026-10-20",
       dateEnd: "2026-10-21",

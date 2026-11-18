@@ -239,9 +239,14 @@ export interface EventTemplate {
   note?: string | null;
 }
 
+/** Kind of an event: "notice" (Hinweis) is all-day only, without location, badges, extras and times. */
+export type EventKind = "event" | "notice";
+
 export interface CalendarEvent {
   id: string;
   calendarId: string;
+  /** Absent = "event". Fixed at creation. */
+  type?: EventKind;
   name: string;
   date: string;
   dateEnd?: string | null; // YYYY-MM-DD, null/undefined = same day as date

@@ -122,6 +122,7 @@ export function ImportEditDialog({
   // A group has no date of its own; validate the rest with a placeholder day.
   const errors = validateEvent({
     ...values,
+    type: "event",
     date: isGroup ? "2000-01-01" : values.date,
     dateEnd: isGroup ? "" : values.dateEnd,
     status: values.status,

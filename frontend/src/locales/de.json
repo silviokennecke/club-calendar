@@ -990,6 +990,26 @@
         "forbidden": "Du darfst diese Reihe nicht ändern (der Kalender ist archiviert oder du bist kein Mitglied mehr). Es wurde nichts geändert.",
         "gone": "Die Reihe gibt es nicht mehr."
       }
+    },
+    "notice": {
+      "create": "Hinweis anlegen",
+      "newTitle": "Neuer Hinweis",
+      "newSubtitle": "Der neue Hinweis ist zunächst ein Entwurf. Er gilt ganztägig.",
+      "editTitle": "Hinweis bearbeiten",
+      "viewTitle": "Hinweis ansehen",
+      "closeNew": "Schließen, Hinweis verwerfen",
+      "closeEdit": "Schließen, Änderungen verwerfen",
+      "readOnly": "Der Kalender ist archiviert. Der Hinweis lässt sich nicht ändern.",
+      "errorTitle": "Der Hinweis ist noch nicht vollständig.",
+      "namePlaceholder": "z. B. Schießstand geschlossen…",
+      "sectionTags": "Gruppen",
+      "save": "Hinweis speichern",
+      "saved": "Hinweis gespeichert.",
+      "delete": "Hinweis löschen",
+      "deleteTitle": "Hinweis „{{name}}“ löschen?",
+      "deleteText": "Der Hinweis am {{date}} wird dauerhaft entfernt.",
+      "deleteConsequence": "Der Hinweis verschwindet aus dem Kalender und aus allen Feeds. Das lässt sich nicht rückgängig machen.",
+      "deleteDone": "Hinweis gelöscht."
     }
   },
   "import": {

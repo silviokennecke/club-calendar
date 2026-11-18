@@ -404,6 +404,9 @@ export default function CalendarPage() {
         onCreateFromTemplate={
           canEdit ? () => routerNavigate(routes.pickTemplate(), { state: navState }) : undefined
         }
+        onCreateNotice={
+          canEdit ? () => routerNavigate(routes.noticeForm(), { state: navState }) : undefined
+        }
         importHref={canEdit ? `${base}/import` : undefined}
       />
 

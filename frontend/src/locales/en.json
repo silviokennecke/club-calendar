@@ -990,6 +990,26 @@
         "forbidden": "You may not change this series (the calendar is archived or you are no longer a member). Nothing was changed.",
         "gone": "The series no longer exists."
       }
+    },
+    "notice": {
+      "create": "Create notice",
+      "newTitle": "New notice",
+      "newSubtitle": "The new notice starts as a draft. It applies to the whole day.",
+      "editTitle": "Edit notice",
+      "viewTitle": "View notice",
+      "closeNew": "Close, discard notice",
+      "closeEdit": "Close, discard changes",
+      "readOnly": "The calendar is archived. The notice cannot be changed.",
+      "errorTitle": "The notice is not complete yet.",
+      "namePlaceholder": "e.g. Shooting range closed…",
+      "sectionTags": "Audiences",
+      "save": "Save notice",
+      "saved": "Notice saved.",
+      "delete": "Delete notice",
+      "deleteTitle": "Delete notice “{{name}}”?",
+      "deleteText": "The notice on {{date}} will be removed permanently.",
+      "deleteConsequence": "The notice disappears from the calendar and from all feeds. This cannot be undone.",
+      "deleteDone": "Notice deleted."
     }
   },
   "import": {

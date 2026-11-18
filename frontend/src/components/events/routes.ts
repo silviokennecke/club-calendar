@@ -15,6 +15,9 @@ export function eventRoutes(base: string) {
     /** Blank form (design: EventNewForm); `templateId` pre-fills it from a template. */
     form: (date?: string | null, templateId?: string) =>
       withDate(`${base}/events/new/form`, date, templateId ? { templateId } : undefined),
+    /** Blank notice form (same dialog as `form`, in notice mode). */
+    noticeForm: (date?: string | null) =>
+      withDate(`${base}/events/new/form`, date, { type: "notice" }),
     /** Template picker (design: EventNewTemplate). */
     pickTemplate: (date?: string | null) => withDate(`${base}/events/new/template`, date),
     /** Single event or series from a template (design: EventSeries). */
