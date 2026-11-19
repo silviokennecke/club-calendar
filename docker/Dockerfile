@@ -8,6 +8,7 @@
 # Configuration happens at runtime (see docker/entrypoint.sh); the SPA uses its own origin for API
 # calls, so one image works for any domain.
 
+# Base image versions; override with --build-arg (e.g. to pick up security updates)
 ARG PHP_VERSION=8.4
 ARG NODE_VERSION=22
 ARG CADDY_VERSION=2
