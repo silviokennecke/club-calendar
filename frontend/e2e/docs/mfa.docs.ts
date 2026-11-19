@@ -183,9 +183,9 @@ for (const lang of LANGS) {
       await shot(page, lang, "profile-mfa");
 
       // 6. Sign-in asks for the code.
+      await page.locator(".ap-usertrigger").first().click();
       await page
-        .getByRole("button", { name: lang === "de" ? "Abmelden" : "Sign out", exact: true })
-        .first()
+        .getByRole("menuitem", { name: lang === "de" ? "Abmelden" : "Sign out", exact: true })
         .click();
       await expect(page).toHaveURL(/\/login/);
       await page.waitForLoadState("networkidle");
