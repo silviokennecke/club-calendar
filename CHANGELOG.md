@@ -5,6 +5,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ## [Unreleased]
 
+### Changed
+
+- **PHP 8.5:** runtime, Docker image and CI now use PHP 8.5. The Docker dependency stage is built on the same PHP as the runtime (`PHP_VERSION`) instead of the floating `composer` image.
+
 ### Added
 
 - **Docker build:** the image workflow can be started manually (`workflow_dispatch`) with optional PHP, Node.js and Caddy base image versions (build args `PHP_VERSION`, `NODE_VERSION`, `CADDY_VERSION`); manual runs are tagged `manual-<run number>` or a chosen tag, never `latest`.

@@ -7,7 +7,7 @@ own web server, this page shows how. You need to be comfortable with PHP hosting
 
 | What | Details |
 |---|---|
-| PHP | 8.4 with PHP-FPM (or mod_php) |
+| PHP | 8.5 with PHP-FPM (or mod_php) |
 | PHP extensions | `ctype`, `dom`, `gd`, `iconv`, `intl`, `mbstring`, `pdo_mysql`, `opcache` (recommended), `redis` (only for a Redis or Valkey [cache](cache-and-storage.md)) |
 | Database | MySQL 8 or MariaDB |
 | Web server | Apache with `mod_rewrite` and `mod_headers`, or nginx |
@@ -100,7 +100,7 @@ The web server has three jobs:
             Require all granted
         </Directory>
         <FilesMatch "\.php$">
-            SetHandler "proxy:unix:/run/php/php8.4-fpm.sock|fcgi://localhost"
+            SetHandler "proxy:unix:/run/php/php8.5-fpm.sock|fcgi://localhost"
         </FilesMatch>
     </VirtualHost>
     ```
@@ -160,7 +160,7 @@ The web server has three jobs:
 
         # MCP endpoint: do not buffer, allow long connections
         location = /api/mcp {
-            fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+            fastcgi_pass unix:/run/php/php8.5-fpm.sock;
             include fastcgi_params;
             fastcgi_param SCRIPT_FILENAME $document_root/index.php;
             fastcgi_buffering off;
@@ -169,14 +169,14 @@ The web server has three jobs:
 
         # API, OAuth/MCP discovery documents and the change-password redirect
         location ~ ^/(api/|\.well-known/(oauth-(authorization-server|protected-resource)|change-password)) {
-            fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+            fastcgi_pass unix:/run/php/php8.5-fpm.sock;
             include fastcgi_params;
             fastcgi_param SCRIPT_FILENAME $document_root/index.php;
             fastcgi_read_timeout 90s;
         }
 
         location @php {
-            fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+            fastcgi_pass unix:/run/php/php8.5-fpm.sock;
             include fastcgi_params;
             fastcgi_param SCRIPT_FILENAME $document_root/index.php;
         }

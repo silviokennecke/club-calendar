@@ -9,19 +9,23 @@
 # calls, so one image works for any domain.
 
 # Base image versions; override with --build-arg (e.g. to pick up security updates)
-ARG PHP_VERSION=8.4
+ARG PHP_VERSION=8.5
 ARG NODE_VERSION=22
 ARG CADDY_VERSION=2
 
 # ── Stage 1: PHP dependencies (no dev) ───────────────────────────────────────
 # Build stages run on the build host's platform (their output is architecture independent)
-FROM --platform=$BUILDPLATFORM composer:2 AS backend-vendor
+# Same PHP as the runtime (PHP_VERSION), so the platform check matches; only the composer binary is taken from the composer image
+FROM --platform=$BUILDPLATFORM php:${PHP_VERSION}-cli-alpine AS backend-vendor
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=ghcr.io/mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN apk add --no-cache git unzip \
+    && install-php-extensions gd intl
+ENV COMPOSER_ALLOW_SUPERUSER=1
 WORKDIR /app/backend
 COPY backend/composer.json backend/composer.lock ./
 # Scripts (cache:clear, assets:install) need the full app and run in the final stage instead
-# ext-gd/ext-intl: the composer image lacks them; the runtime stage installs them
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction \
-    --ignore-platform-req=ext-gd --ignore-platform-req=ext-intl
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction
 COPY backend/ ./
 # fixtures need a dev-only bundle and are not meant for production
 RUN rm -rf src/DataFixtures \

@@ -10,7 +10,7 @@ Running your own instance? See the admin guide: <https://silviokennecke.github.i
 
 ## Tech Stack
 
-- **Backend:** PHP 8.4, Symfony 8.1, Doctrine ORM + Migrations, JWT auth (`lexik/jwt-authentication-bundle`), MySQL 8
+- **Backend:** PHP 8.5, Symfony 8.1, Doctrine ORM + Migrations, JWT auth (`lexik/jwt-authentication-bundle`), MySQL 8
 - **Frontend:** Vite, React 19, React Router 7, TypeScript, TanStack Query, Tailwind CSS (design tokens), i18next (de/en), own month/week calendar views, Mapbox GL
 - **Tests:** PHPUnit (backend), Vitest (frontend unit), Playwright (E2E)
 
@@ -26,7 +26,7 @@ Running your own instance? See the admin guide: <https://silviokennecke.github.i
 
 ### Prerequisites
 
-- PHP 8.4 with Composer (extensions `gd` and `intl` are required for the PDF export)
+- PHP 8.5 with Composer (extensions `gd` and `intl` are required for the PDF export)
 - [Symfony CLI](https://symfony.com/download)
 - Node.js 22 (see `.nvmrc`) and npm
 - MySQL 8 — either your own instance or the optional `docker-compose.yml` (Docker is not required by any npm/composer script)

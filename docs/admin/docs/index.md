@@ -35,7 +35,7 @@ Club Calendar (web server + PHP) ---- MySQL 8 / MariaDB
 | What | Requirement |
 |---|---|
 | Docker (recommended) | Docker with Compose, access to `ghcr.io` |
-| Without Docker | PHP 8.4, Apache or nginx, Node.js 22 (build only), see [Hosting without Docker](hosting-without-docker.md) |
+| Without Docker | PHP 8.5, Apache or nginx, Node.js 22 (build only), see [Hosting without Docker](hosting-without-docker.md) |
 | Database | MySQL 8 or MariaDB |
 | Public address | A domain name with HTTPS |
 | Memory | A small server is enough for a club. PDF export and large imports briefly need more memory, so leave some room |
