@@ -140,3 +140,18 @@ describe("AppShell unavailable club", () => {
     expect(screen.getByTestId("location")).toHaveTextContent("/clubs/foreign/calendars/kx");
   });
 });
+
+describe("AppShell collapsed sidebar", () => {
+  it("keeps ap-page and adds ap-page--rail as separate classes when collapsed", async () => {
+    window.localStorage.setItem("sidebar_collapsed", "1");
+    try {
+      const { container } = renderShell("c1", "k1");
+      await screen.findByText("Inhalt");
+      const page = container.querySelector(".ap-page");
+      expect(page).not.toBeNull();
+      expect(page).toHaveClass("ap", "ap-page", "ap-page--rail");
+    } finally {
+      window.localStorage.removeItem("sidebar_collapsed");
+    }
+  });
+});

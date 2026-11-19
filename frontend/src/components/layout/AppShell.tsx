@@ -176,7 +176,7 @@ export function AppShell({
   const roleUnknown = clubsLoading && !memberMayOpen(pathname, clubId);
 
   return (
-    <div className={`ap ap-page${railed ? "ap-page--rail" : ""}`}>
+    <div className={railed ? "ap ap-page ap-page--rail" : "ap ap-page"}>
       <a className="ap-skip cc-btn cc-btn--primary" href="#main">
         {t("shell.skipToContent")}
       </a>
