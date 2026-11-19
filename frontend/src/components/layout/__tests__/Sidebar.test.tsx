@@ -88,9 +88,10 @@ describe("Sidebar navigation", () => {
     expect(screen.getByRole("link", { name: "Club Calendar" })).toHaveAttribute("href", "/");
   });
 
-  it("marks the profile link as current on /profile", () => {
+  it("marks the profile link as current on /profile", async () => {
     renderAt("/profile");
-    expect(screen.getByRole("link", { name: /Alex Beispiel/ })).toHaveAttribute(
+    await userEvent.click(screen.getByRole("button", { name: /Alex Beispiel/ }));
+    expect(screen.getByRole("menuitem", { name: "Profileinstellungen" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -99,9 +100,10 @@ describe("Sidebar navigation", () => {
 
   it.each(["/profile/security", "/profile/apps", "/profile/privacy"])(
     "keeps the profile link current on the tab %s",
-    (path) => {
+    async (path) => {
       renderAt(path);
-      expect(screen.getByRole("link", { name: /Alex Beispiel/ })).toHaveAttribute(
+      await userEvent.click(screen.getByRole("button", { name: /Alex Beispiel/ }));
+      expect(screen.getByRole("menuitem", { name: "Profileinstellungen" })).toHaveAttribute(
         "aria-current",
         "page",
       );
@@ -139,11 +141,30 @@ describe("Sidebar navigation", () => {
     expect(screen.getByText("Archiviert, schreibgeschützt")).toBeInTheDocument();
   });
 
-  it("signs out via a real button", async () => {
+  it("signs out via the user menu", async () => {
     const d = data();
     renderAt(base, d);
-    await userEvent.click(screen.getByRole("button", { name: "Abmelden" }));
+    expect(screen.queryByRole("button", { name: "Abmelden" })).not.toBeInTheDocument();
+    const trigger = screen.getByRole("button", { name: /Alex Beispiel/ });
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("menuitem", { name: "Profileinstellungen" })).toHaveAttribute(
+      "href",
+      "/profile",
+    );
+    await userEvent.click(screen.getByRole("menuitem", { name: "Abmelden" }));
     expect(d.onLogout).toHaveBeenCalled();
+  });
+
+  it("closes the user menu with Escape and returns focus", async () => {
+    renderAt(base);
+    const trigger = screen.getByRole("button", { name: /Alex Beispiel/ });
+    await userEvent.click(trigger);
+    await userEvent.keyboard("{Escape}");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveFocus();
   });
 });
 

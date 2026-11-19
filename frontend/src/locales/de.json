@@ -1937,6 +1937,8 @@
       "myClub": "Mein Verein"
     },
     "profile": "Mein Profil",
+    "profileSettings": "Profileinstellungen",
+    "userMenu": "Benutzermenü",
     "signOut": "Abmelden",
     "tabsLabel": "Hauptbereiche",
     "tabs": {

@@ -10,7 +10,7 @@ Eine Anmeldung gilt, bis du dich abmeldest, längstens aber 30 Tage nach dem Anm
 
 ## Auf diesem Gerät abmelden
 
-Klicke in der Seitenleiste auf **Abmelden** oder auf deinem [Profil](help:settings/profile) auf **Abmelden**. Danach bist du in allen geöffneten Tabs dieses Browsers abgemeldet.
+Klicke in der Seitenleiste auf deinen Namen und dann auf **Abmelden** oder auf deinem [Profil](help:settings/profile) auf **Abmelden**. Danach bist du in allen geöffneten Tabs dieses Browsers abgemeldet.
 
 Tipp: Auf einem fremden oder gemeinsam genutzten Computer meldest du dich immer ab, wenn du fertig bist. Sonst bleibst du auch nach dem Schließen des Browsers angemeldet.
 

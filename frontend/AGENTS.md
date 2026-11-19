@@ -123,6 +123,7 @@ Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/
   extra problem members). Signup, login (403 `email_not_verified`) and the SSO callback
   (`?error=email_verification_required&email=`) lead there. `/auth/verify-email` only shows the result of an e-mail
   change (`status=email_changed`, `flow=email_change` errors with "Zum Profil"); anything else goes to `/verify-email`.
+- User menu of the sidebar footer (`layout/UserMenu.tsx`): profile block as a menu button (profile settings, sign out); `compact` renders avatar only, `side` (`top`|`right`) and `align` (`start`|`end`) position the panel for a future narrow rail. No version string exists in the app, so the panel has no version footnote (`footnote` prop).
 - Context switcher menus (`layout/ContextMenu.tsx`): disclosure with Escape, arrow keys, Home/End, Tab-out closes.
 - Calendar (no FullCalendar): pure date logic in `src/lib/calendar/` (`dates.ts` ISO-date arithmetic in UTC,
   month grid, ISO weeks, `todayIn(timeZone)`; `items.ts` events/holidays as inclusive ranges, week lane layout,

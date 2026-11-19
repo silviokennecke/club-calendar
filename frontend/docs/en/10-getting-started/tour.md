@@ -25,7 +25,7 @@ On a smartphone both are in one switcher in the top bar.
 - **Set up calendar**: the calendar **Settings** and **Publish**.
 - **Club**: **Manage club** (members, calendars) and **Places and audiences**.
 
-At the bottom you find **My profile** (your name), **Help** and **Sign out**.
+At the bottom you find **Help** and your name. Click your name to open a menu with **Profile settings** and **Sign out**.
 
 :::note
 Viewers do not see **Publish**. More under [Roles in a club](help:getting-started/roles).

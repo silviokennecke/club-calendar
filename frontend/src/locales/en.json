@@ -1937,6 +1937,8 @@
       "myClub": "My club"
     },
     "profile": "My profile",
+    "profileSettings": "Profile settings",
+    "userMenu": "User menu",
     "signOut": "Sign out",
     "tabsLabel": "Main areas",
     "tabs": {

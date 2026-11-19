@@ -4,12 +4,13 @@ import { useTranslation } from "react-i18next";
 import { Icon, Logo, StatusBadge } from "@/components/ui/shared";
 import { isPlainMember } from "@/lib/club/permissions";
 import { HelpCenterLink } from "@/docs/HelpCenterLink";
+import { UserMenu } from "./UserMenu";
 import { ContextMenu } from "./ContextMenu";
 import { CalendarMenuItems, ClubMenuItems } from "./ContextMenuItems";
 import { activeNavKey, buildNavGroups, initials, shellCalendarId } from "./navigation";
 import type { ShellData } from "./shellTypes";
 
-/** Desktop sidebar (288px): logo, club/calendar switchers, navigation, profile, sign out. */
+/** Desktop sidebar (288px): logo, club/calendar switchers, navigation, help, user menu (profile, sign out). */
 export function Sidebar({ data }: { data: ShellData }) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
@@ -99,26 +100,21 @@ export function Sidebar({ data }: { data: ShellData }) {
       )}
 
       <div className="ap-side-foot">
-        <Link
-          className="ap-navlink"
-          to="/profile"
-          aria-current={active === "profile" ? "page" : undefined}
-        >
-          <span className="ap-avatar" aria-hidden="true">
-            {initials(data.userName)}
-          </span>
-          <span className="ap-grow">
-            {data.userName}
-            <span className="ap-sr">, {t("shell.profile")}</span>
-          </span>
-        </Link>
         <HelpCenterLink className="ap-navlink">
           <Icon glyph="info" size={20} />
         </HelpCenterLink>
-        <button type="button" className="ap-navlink" onClick={data.onLogout}>
-          <Icon glyph="log-out" size={20} />
-          {t("shell.signOut")}
-        </button>
+        <UserMenu
+          initials={initials(data.userName)}
+          name={data.userName}
+          subtitle={club?.role ? t(`club.roles.${club.role}`) : undefined}
+          menuLabel={t("shell.userMenu")}
+          profileHref="/profile"
+          profileLabel={t("shell.profileSettings")}
+          profileCurrent={active === "profile"}
+          signOutLabel={t("shell.signOut")}
+          onSignOut={data.onLogout}
+          closeKey={pathname}
+        />
       </div>
     </aside>
   );

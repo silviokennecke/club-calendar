@@ -10,7 +10,7 @@ A session lasts until you sign out, but at most 30 days after signing in. You al
 
 ## Sign out on this device
 
-Click **Sign out** in the sidebar or on your [profile](help:settings/profile). Then you are signed out in all open tabs of this browser.
+Click your name in the sidebar and then **Sign out**, or use **Sign out** on your [profile](help:settings/profile). Then you are signed out in all open tabs of this browser.
 
 Tip: on someone else's or a shared computer, always sign out when you are done. Otherwise you stay signed in even after closing the browser.
 
