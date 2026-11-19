@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { Link } from "react-router-dom";
-import { Icon } from "@/components/ui/shared";
+import { Icon, Tooltip } from "@/components/ui/shared";
 import { cn } from "@/lib/utils";
 
 interface UserMenuProps {
@@ -121,30 +121,32 @@ export function UserMenu({
         if (open && to && !wrapRef.current?.contains(to)) setOpen(false);
       }}
     >
-      <button
-        ref={triggerRef}
-        type="button"
-        className={cn("ap-usertrigger", compact && "ap-usertrigger-compact")}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? panelId : undefined}
-        aria-label={compact ? [name, subtitle].filter(Boolean).join(", ") : undefined}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={onTriggerKey}
-      >
-        <span className="ap-avatar" aria-hidden="true">
-          {initials}
-        </span>
-        {!compact && (
-          <>
-            <span className="ap-usertext">
-              <b>{name}</b>
-              {subtitle && <small>{subtitle}</small>}
-            </span>
-            <Icon glyph="chevrons-up-down" size={18} />
-          </>
-        )}
-      </button>
+      <Tooltip label={name} side="right" disabled={!compact || open}>
+        <button
+          ref={triggerRef}
+          type="button"
+          className={cn("ap-usertrigger", compact && "ap-usertrigger-compact")}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          aria-label={compact ? [name, subtitle].filter(Boolean).join(", ") : undefined}
+          onClick={() => setOpen((o) => !o)}
+          onKeyDown={onTriggerKey}
+        >
+          <span className="ap-avatar" aria-hidden="true">
+            {initials}
+          </span>
+          {!compact && (
+            <>
+              <span className="ap-usertext">
+                <b>{name}</b>
+                {subtitle && <small>{subtitle}</small>}
+              </span>
+              <Icon glyph="chevrons-up-down" size={18} />
+            </>
+          )}
+        </button>
+      </Tooltip>
       {open && (
         <div
           id={panelId}

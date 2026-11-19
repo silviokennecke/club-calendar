@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -200,5 +200,80 @@ describe("Tabbar", () => {
       .filter((l) => l.getAttribute("aria-current") === "page");
     expect(active).toHaveLength(1);
     expect(active[0]).toHaveTextContent(label);
+  });
+});
+
+describe("collapsible sidebar", () => {
+  beforeEach(() => localStorage.clear());
+
+  const toggle = () => screen.getByRole("button", { name: "Seitenleiste ein- oder ausklappen" });
+
+  it("is expanded by default and exposes the state on the toggle", () => {
+    renderAt(base);
+    expect(toggle()).toHaveAttribute("aria-expanded", "true");
+    expect(toggle()).toHaveAttribute("aria-controls", screen.getByRole("complementary").id);
+    expect(screen.getByRole("complementary")).not.toHaveClass("ap-side--rail");
+  });
+
+  it("collapses to a rail, keeps accessible names and stores the state", async () => {
+    renderAt(base);
+    await userEvent.click(toggle());
+    expect(toggle()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("complementary")).toHaveClass("ap-side--rail");
+    expect(localStorage.getItem("sidebar_collapsed")).toBe("1");
+    expect(screen.getByRole("link", { name: "Veröffentlichen" })).toHaveAttribute(
+      "href",
+      "/clubs/c1/settings/feeds",
+    );
+    expect(
+      screen.getByRole("link", { name: "Veröffentlichen" }).querySelector(".ap-sr"),
+    ).not.toBeNull();
+    expect(screen.getByRole("button", { name: /Kalender.*Schießbetrieb 2026/ })).toBeVisible();
+    await userEvent.click(toggle());
+    expect(screen.getByRole("complementary")).not.toHaveClass("ap-side--rail");
+    expect(localStorage.getItem("sidebar_collapsed")).toBe("0");
+  });
+
+  it("starts collapsed when stored and shows a tooltip on hover", async () => {
+    localStorage.setItem("sidebar_collapsed", "1");
+    renderAt(base);
+    expect(toggle()).toHaveAttribute("aria-expanded", "false");
+    await userEvent.hover(screen.getByRole("link", { name: "Veröffentlichen" }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Veröffentlichen");
+  });
+
+  it("shows the tooltip when a rail item gets keyboard focus", async () => {
+    localStorage.setItem("sidebar_collapsed", "1");
+    renderAt(base);
+    const link = screen.getByRole("link", { name: "Veröffentlichen" });
+    for (let i = 0; i < 20 && document.activeElement !== link; i++) await userEvent.tab();
+    expect(link).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Veröffentlichen");
+  });
+
+  it("works without localStorage", async () => {
+    const spy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    renderAt(base);
+    await userEvent.click(toggle());
+    expect(toggle()).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(toggle());
+    spy.mockRestore();
+    set.mockRestore();
+  });
+
+  it("keeps the user menu usable in the rail", async () => {
+    const d = data();
+    localStorage.setItem("sidebar_collapsed", "1");
+    renderAt(base, d);
+    const trigger = screen.getByRole("button", { name: /Alex Beispiel/ });
+    await userEvent.click(trigger);
+    expect(screen.getByRole("menuitem", { name: "Profileinstellungen" })).toBeVisible();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Abmelden" }));
+    expect(d.onLogout).toHaveBeenCalled();
   });
 });

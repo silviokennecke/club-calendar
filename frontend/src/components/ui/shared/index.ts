@@ -17,6 +17,7 @@ export { Field, TextInput, TextArea, NativeSelect } from "./Field";
 export type { FieldControlProps } from "./Field";
 export { PasswordField } from "./PasswordField";
 export { Toggle } from "./Toggle";
+export { Tooltip } from "./Tooltip";
 export { Tag } from "./Tag";
 export type { TagTone } from "./Tag";
 export { StatusBadge } from "./StatusBadge";

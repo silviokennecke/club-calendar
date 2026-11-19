@@ -11,6 +11,7 @@ import type { Calendar, Club } from "@/lib/types";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { Tabbar } from "./Tabbar";
+import { useSidebarCollapsed } from "./useSidebarCollapsed";
 import { shellCalendarId } from "./navigation";
 import type { ShellData } from "./shellTypes";
 import { FullPageLoader } from "@/components/ui/shared";
@@ -40,6 +41,7 @@ export function AppShell({
   const { user, logout, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const trackedRef = useRef("");
+  const [railed] = useSidebarCollapsed();
 
   const { data: clubsData, isLoading: clubsLoading } = useQuery<Club[]>({
     queryKey: ["clubs"],
@@ -174,7 +176,7 @@ export function AppShell({
   const roleUnknown = clubsLoading && !memberMayOpen(pathname, clubId);
 
   return (
-    <div className="ap ap-page">
+    <div className={`ap ap-page${railed ? "ap-page--rail" : ""}`}>
       <a className="ap-skip cc-btn cc-btn--primary" href="#main">
         {t("shell.skipToContent")}
       </a>

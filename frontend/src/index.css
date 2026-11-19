@@ -877,10 +877,15 @@
     background: var(--surface-raised);
     border-right: 1px solid var(--border);
     overflow-y: auto;
+    overflow-x: hidden;
     z-index: 20;
   }
   .ap-side-logo {
     padding: var(--space-2) var(--space-2) 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
   }
   .ap-ctx {
     display: flex;
@@ -2116,6 +2121,83 @@
   .ap-skel::after {
     animation: none;
   }
+}
+
+/* Collapsed desktop sidebar: 72px icon rail. Overflow is visible so the switcher and user menu panels can open to the right. */
+@media (min-width: 721px) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ap-side {
+      transition: width 0.2s ease;
+    }
+    .ap-main {
+      transition: margin-left 0.2s ease;
+    }
+  }
+  .ap-side--rail {
+    width: 72px;
+    padding-inline: var(--space-3);
+    overflow: visible;
+  }
+  .ap-page--rail .ap-main {
+    margin-left: 72px;
+  }
+  .ap-side--rail .ap-side-logo {
+    flex-direction: column;
+    padding-inline: 0;
+    gap: var(--space-3);
+  }
+  .ap-side--rail .ap-ctxbtn {
+    justify-content: center;
+    padding: 0;
+  }
+  .ap-side--rail .ap-menu {
+    left: calc(100% + var(--space-2));
+    right: auto;
+    top: 0;
+    width: 280px;
+  }
+  .ap-side--rail .ap-navlink {
+    justify-content: center;
+    padding: 0;
+  }
+  .ap-navtitle--rail {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .ap-side--rail .ap-navgroup + .ap-navgroup {
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--border);
+  }
+  .ap-side--rail .ap-usermenu {
+    display: flex;
+    justify-content: center;
+  }
+  .ap-railbadge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+    color: var(--ink-muted);
+  }
+}
+.ap-tooltip-pos {
+  z-index: 60;
+}
+.ap-tooltip {
+  max-width: 280px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: var(--surface);
+  font: 600 0.8125rem/1.25rem var(--font-sans);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
 }
 
 /* ---------- Mobile (max-width: 720px) ---------- */

@@ -25,6 +25,8 @@ Auf dem Smartphone steckt beides in einem Wechsler in der oberen Leiste.
 - **Kalender einrichten**: **Einstellungen** des Kalenders und **Veröffentlichen**.
 - **Verein**: **Verein verwalten** (Mitglieder, Kalender) und **Orte und Gruppen**.
 
+Am Computer kannst du die Seitenleiste mit dem Pfeil-Knopf oben auf eine schmale Symbolleiste verkleinern und genauso wieder öffnen. Fahre mit der Maus über ein Symbol, um seinen Namen zu sehen. Deine Wahl merkt sich dieser Browser.
+
 Unten findest du **Hilfe** und deinen Namen. Ein Klick auf deinen Namen öffnet ein Menü mit **Profileinstellungen** und **Abmelden**.
 
 :::note

@@ -1909,6 +1909,7 @@
   "shell": {
     "skipToContent": "Zum Inhalt springen",
     "helpSubscribe": "Kalender abonnieren – Hilfe",
+    "toggleSidebar": "Seitenleiste ein- oder ausklappen",
     "sidebarLabel": "Seitenleiste",
     "club": "Verein",
     "calendar": "Kalender",

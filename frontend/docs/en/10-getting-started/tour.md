@@ -25,6 +25,8 @@ On a smartphone both are in one switcher in the top bar.
 - **Set up calendar**: the calendar **Settings** and **Publish**.
 - **Club**: **Manage club** (members, calendars) and **Places and audiences**.
 
+On a computer you can collapse the sidebar to a narrow icon bar with the arrow button at the top and open it again the same way. Hover over an icon to see its name. Your choice is remembered in this browser.
+
 At the bottom you find **Help** and your name. Click your name to open a menu with **Profile settings** and **Sign out**.
 
 :::note

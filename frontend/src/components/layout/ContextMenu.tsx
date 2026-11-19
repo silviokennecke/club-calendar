@@ -5,7 +5,8 @@ import {
   type KeyboardEvent as ReactKeyEvent,
   type ReactNode,
 } from "react";
-import { Icon, type Glyph } from "@/components/ui/shared";
+import { cn } from "@/lib/utils";
+import { Icon, Tooltip, type Glyph } from "@/components/ui/shared";
 
 interface ContextMenuProps {
   /** Small caption above the value (e.g. "Verein"). */
@@ -17,6 +18,8 @@ interface ContextMenuProps {
   menuLabel: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Icon-only trigger (narrow rail): caption and value stay for screen readers, the panel opens to the right. */
+  collapsed?: boolean;
   children: ReactNode;
 }
 
@@ -31,6 +34,7 @@ export function ContextMenu({
   menuLabel,
   open,
   onOpenChange,
+  collapsed = false,
   children,
 }: ContextMenuProps) {
   const panelId = `ctx-${useId().replace(/:/g, "")}`;
@@ -102,22 +106,31 @@ export function ContextMenu({
         if (open && to && !wrapRef.current?.contains(to)) onOpenChange(false);
       }}
     >
-      <button
-        ref={triggerRef}
-        type="button"
-        className="ap-ctxbtn"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => onOpenChange(!open)}
-        onKeyDown={onTriggerKey}
+      <Tooltip
+        label={
+          <>
+            {caption}: {value}
+          </>
+        }
+        disabled={!collapsed || open}
       >
-        {icon && <Icon glyph={icon} size={22} />}
-        <span className="ap-ctxtext">
-          <small>{caption}</small>
-          <b>{value}</b>
-        </span>
-        <Icon glyph={open ? "chevron-up" : "chevron-down"} size={18} />
-      </button>
+        <button
+          ref={triggerRef}
+          type="button"
+          className={cn("ap-ctxbtn", collapsed && "ap-ctxbtn--rail")}
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => onOpenChange(!open)}
+          onKeyDown={onTriggerKey}
+        >
+          {icon && <Icon glyph={icon} size={22} />}
+          <span className={cn("ap-ctxtext", collapsed && "ap-sr")}>
+            <small>{caption}</small>
+            <b>{value}</b>
+          </span>
+          {!collapsed && <Icon glyph={open ? "chevron-up" : "chevron-down"} size={18} />}
+        </button>
+      </Tooltip>
       {open && (
         <div
           className="ap-menu"
