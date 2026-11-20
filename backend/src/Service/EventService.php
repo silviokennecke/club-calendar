@@ -122,7 +122,8 @@ readonly class EventService
             $qb->andWhere('e.date <= :to')->setParameter('to', $to, Types::DATE_IMMUTABLE);
         }
         if ($targetGroupIds) {
-            $qb->andWhere('EXISTS (SELECT etg FROM App\Entity\EventTargetGroup etg WHERE etg.event = e AND etg.targetGroup IN (:tgIds))')
+            // events without any group apply to everyone and always match
+            $qb->andWhere('(EXISTS (SELECT etg FROM App\Entity\EventTargetGroup etg WHERE etg.event = e AND etg.targetGroup IN (:tgIds)) OR NOT EXISTS (SELECT etg2 FROM App\Entity\EventTargetGroup etg2 WHERE etg2.event = e))')
                ->setParameter('tgIds', $targetGroupIds);
         }
         if (null !== $search) {

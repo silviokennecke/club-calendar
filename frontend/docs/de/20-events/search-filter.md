@@ -22,7 +22,7 @@ Die Liste zeigt höchstens 10 Treffer mit Datum, Uhrzeit und Ort, Entwürfe sind
 
 Hat dein Verein [Gruppen](help:organize/target-groups) angelegt, siehst du neben der Suche je eine Schaltfläche pro Gruppe.
 
-- Klicke auf eine oder mehrere Gruppen: Der Kalender zeigt nur Termine, die zu einer davon gehören.
+- Klicke auf eine oder mehrere Gruppen: Der Kalender zeigt Termine, die zu einer davon gehören, und Termine ohne Gruppe (die gelten für alle).
 - Klicke noch einmal, um die Gruppe wieder abzuwählen.
 - **Filter zurücksetzen** setzt alles zurück.
 

@@ -197,6 +197,23 @@ class EventNoticeTest extends WebTestCase
         $this->assertSame(200, self::$client->getResponse()->getStatusCode());
     }
 
+    public function testGroupFilterIncludesItemsWithoutGroups(): void
+    {
+        $tg = TestHelper::createTargetGroup(self::$em, $this->club, 'Youth');
+        $other = TestHelper::createTargetGroup(self::$em, $this->club, 'Adults');
+        $this->req('POST', "{$this->base}/events", ['name' => 'Mit', 'date' => '2026-08-01', 'timeBegin' => '18:00', 'timeEnd' => '19:00', 'targetGroupIds' => [$tg->getId()]]);
+        $this->req('POST', "{$this->base}/events", ['name' => 'Andere', 'date' => '2026-08-01', 'timeBegin' => '18:00', 'timeEnd' => '19:00', 'targetGroupIds' => [$other->getId()]]);
+        $this->req('POST', "{$this->base}/events", ['name' => 'Ohne', 'date' => '2026-08-01', 'timeBegin' => '18:00', 'timeEnd' => '19:00']);
+        $this->notice(['name' => 'HinweisOhne']);
+        $this->notice(['name' => 'HinweisMit', 'targetGroupIds' => [$tg->getId()]]);
+        $this->notice(['name' => 'HinweisAndere', 'targetGroupIds' => [$other->getId()]]);
+
+        $r = $this->req('GET', "{$this->base}/events?targetGroupIds={$tg->getId()}");
+        $names = array_column($r['body'], 'name');
+        sort($names);
+        $this->assertSame(['HinweisMit', 'HinweisOhne', 'Mit', 'Ohne'], $names);
+    }
+
     public function testNoticeNeverConflictsWithResource(): void
     {
         $loc = TestHelper::createLocation(self::$em, $this->club, 'Hall');

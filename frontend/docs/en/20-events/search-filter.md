@@ -22,7 +22,7 @@ The list shows at most 10 results with date, time and location; drafts are marke
 
 If your club has created [audiences](help:organize/target-groups), you see one button per audience next to the search.
 
-- Click one or more audiences: the calendar shows only events that belong to at least one of them.
+- Click one or more audiences: the calendar shows events that belong to at least one of them, plus events without an audience (they apply to everyone).
 - Click again to deselect an audience.
 - **Reset filters** clears everything.
 

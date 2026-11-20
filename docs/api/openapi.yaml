@@ -2830,7 +2830,7 @@ paths:
         - { name: to, in: query, schema: { type: string, format: date } }
         - { name: limit, in: query, description: 'Page size, 1..5000 (default 5000); outside → 400 `validation_failed` field `limit`.', schema: { type: integer, minimum: 1, maximum: 5000, default: 5000 } }
         - { name: offset, in: query, description: 'Events to skip (default 0).', schema: { type: integer, minimum: 0, default: 0 } }
-        - { name: targetGroupIds, in: query, description: Comma-separated audience (target group) ids (events with at least one)., schema: { type: string } }
+        - { name: targetGroupIds, in: query, description: Comma-separated audience (target group) ids (events with at least one, plus events without any audience, which apply to everyone)., schema: { type: string } }
         - { name: type, in: query, description: 'Only events (`event`) or only notices (`notice`); other values are 400 `validation_failed` field `type`.', schema: { type: string, enum: [event, notice] } }
         - { name: q, in: query, description: 'Text search (trimmed, empty = no filter, at most 100 characters, else 400 `validation_failed` field `q`): case-insensitive substring of the event name, note, location name or the name of one of its extras (features). Combines with the other filters; without `from`/`to` the whole calendar is searched.', schema: { type: string, maxLength: 100 } }
       responses:
