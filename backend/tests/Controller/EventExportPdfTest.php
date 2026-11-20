@@ -311,6 +311,22 @@ class EventExportPdfTest extends WebTestCase
         }
     }
 
+    public function testGroupFilterIncludesEventsAndNoticesWithoutGroups(): void
+    {
+        $youth = TestHelper::createTargetGroup(self::$em, $this->club, 'Jugend')->getId();
+        $adults = TestHelper::createTargetGroup(self::$em, $this->club, 'Erwachsene')->getId();
+        $this->create(['name' => 'Zeltlager', 'date' => '2026-10-05', 'targetGroupIds' => [$youth]]);
+        $this->create(['name' => 'Herbstfest', 'date' => '2026-10-06', 'targetGroupIds' => [$adults]]);
+        $this->create(['name' => 'Allgemeintermin', 'date' => '2026-10-07']);
+        $this->create(['name' => 'Allgemeinhinweis', 'date' => '2026-10-08', 'type' => 'notice']);
+
+        $html = $this->html('agenda', '2026-10-01', '2026-10-31', groups: [$youth]);
+        $this->assertStringContainsString('Zeltlager', $html);
+        $this->assertStringNotContainsString('Herbstfest', $html);
+        $this->assertStringContainsString('Allgemeintermin', $html);
+        $this->assertStringContainsString('Allgemeinhinweis', $html);
+    }
+
     /** @return array{string, string} */
     private function bounds(string $query): array
     {

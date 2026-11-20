@@ -18,7 +18,7 @@ You can download events as an ICS file, for example as a backup or to bring them
 3. Under **Status**, choose which events go into the file:
    - **Published events only**: exactly what guests see
    - **Drafts too**: your club's drafts as well
-4. Optionally filter by audience under **Audiences**. Without a selection, all are exported.
+4. Optionally filter by audience under **Audiences**. Without a selection, all are exported. With a selection you get the events of those audiences plus events without an audience (they apply to everyone).
 5. The **Preview** shows the number of events. If it is zero, change the period or selection.
 6. Click **Download ICS file**.
 

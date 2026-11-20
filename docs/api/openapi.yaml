@@ -3312,7 +3312,7 @@ paths:
         - { name: includeDrafts, in: query, schema: { type: string, enum: ['true', 'false', '1', '0'], default: 'false' } }
         - name: 'targetGroupIds[]'
           in: query
-          description: Ids of audiences (target groups) of this calendar (at most 100); a comma-separated `targetGroupIds` is accepted too.
+          description: Ids of audiences (target groups) of this calendar (at most 100); a comma-separated `targetGroupIds` is accepted too. Events with at least one of them are returned, plus events without any audience (they apply to everyone).
           schema: { type: array, items: { type: string } }
           style: form
           explode: true
@@ -3365,6 +3365,7 @@ paths:
         - { name: includeDrafts, in: query, schema: { type: string, enum: ['true', 'false', '1', '0'], default: 'false' } }
         - name: 'targetGroupIds[]'
           in: query
+          description: Ids of audiences of this club (at most 100); events with at least one of them plus events without any audience (they apply to everyone).
           schema: { type: array, items: { type: string } }
           style: form
           explode: true

@@ -42,7 +42,7 @@ readonly class EventExportService
      * @param mixed $from           YYYY-MM-DD or null (events ending on or after it, overlap like the event list)
      * @param mixed $to             YYYY-MM-DD or null (events starting on or before it)
      * @param mixed $includeDrafts  "1"/"true" or "0"/"false" (default: published only)
-     * @param mixed $targetGroupIds list of ids of this calendar (or comma-separated), events with one of them
+     * @param mixed $targetGroupIds list of ids of this calendar (or comma-separated), events with one of them or without any group
      *
      * @return \Generator<int, string>
      */
@@ -86,7 +86,7 @@ readonly class EventExportService
             $qb->andWhere('e.date <= :to')->setParameter('to', $filter->toDate, Types::DATE_IMMUTABLE);
         }
         if ([] !== $filter->groupIds) {
-            $qb->andWhere('EXISTS (SELECT etg FROM App\Entity\EventTargetGroup etg WHERE etg.event = e AND etg.targetGroup IN (:tgIds))')
+            $qb->andWhere('(EXISTS (SELECT etg FROM App\Entity\EventTargetGroup etg WHERE etg.event = e AND etg.targetGroup IN (:tgIds)) OR NOT EXISTS (SELECT etg2 FROM App\Entity\EventTargetGroup etg2 WHERE etg2.event = e))')
                 ->setParameter('tgIds', $filter->groupIds);
         }
 

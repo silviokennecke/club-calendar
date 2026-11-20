@@ -129,9 +129,10 @@ class ExportBulkTest extends WebTestCase
         $r = $this->get("$base/events.ics?targetGroupIds[]=$youth", $auth);
         $this->assertStringContainsString('Zeltlager', $r['content']);
         $this->assertStringNotContainsString('Herbstfest', $r['content']);
+        $this->assertStringContainsString('Silvester', $r['content'], 'events without groups apply to everyone');
         $r = $this->get("$base/events.ics?targetGroupIds[]=$youth&targetGroupIds[]=$adults", $auth);
         $this->assertStringContainsString('Herbstfest', $r['content']);
-        $this->assertStringNotContainsString('Silvester', $r['content']);
+        $this->assertStringContainsString('Silvester', $r['content']);
 
         // Target groups of another calendar (or unknown ones) are rejected, not ignored
         $otherUser = TestHelper::createUser(self::$em, self::$hasher);
