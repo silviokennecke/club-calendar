@@ -21,7 +21,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-/** Notices appear in the web views (public feed, my-events) with `type`, but have no detail route. */
+/** Notices appear in the web views (public feed, my-events) with `type`, and have a detail (but no one-event ICS). */
 class FeedNoticeWebViewTest extends WebTestCase
 {
     private KernelBrowser $client;
@@ -161,10 +161,15 @@ class FeedNoticeWebViewTest extends WebTestCase
         $this->assertSame([], $body['events']);
     }
 
-    public function testNoticeDetailIs404(): void
+    public function testNoticeDetailIsReturned(): void
     {
         $feedId = $this->feed(FeedVisibility::PUBLIC);
-        [$status] = $this->get("/api/feed/$feedId/events/{$this->noticeId}");
+        [$status, $body] = $this->get("/api/feed/$feedId/events/{$this->noticeId}");
+        $this->assertSame(200, $status);
+        $this->assertSame('notice', $body['event']['type']);
+        [$status] = $this->get("/api/feed/$feedId/events/{$this->draftNoticeId}");
+        $this->assertSame(404, $status);
+        [$status] = $this->get("/api/feed/$feedId/events/{$this->noticeId}/ics");
         $this->assertSame(404, $status);
         [$status] = $this->get("/api/feed/$feedId/events/{$this->eventId}");
         $this->assertSame(200, $status);
@@ -186,7 +191,7 @@ class FeedNoticeWebViewTest extends WebTestCase
         $this->assertContains('Holiday Closure', $this->names($body['events']));
     }
 
-    public function testMyEventsIncludesNoticesButNoDetail(): void
+    public function testMyEventsIncludesNoticesAndDetail(): void
     {
         $feedId = $this->feed(FeedVisibility::CLUB);
         $r = TestHelper::jsonRequest($this->client, 'PUT', "/api/clubs/{$this->clubId}/my-subscription", ['feedIds' => [$feedId], 'targetGroupIds' => []], TestHelper::authHeader($this->em->find(User::class, $this->adminId), $this->tokens));
@@ -204,7 +209,10 @@ class FeedNoticeWebViewTest extends WebTestCase
         [, $body] = $this->get("/api/clubs/{$this->clubId}/my-events?from=$from&to=$to", $this->adminId);
         $this->assertSame(['Holiday Closure'], $this->names($body['events']));
 
-        [$status] = $this->get("/api/clubs/{$this->clubId}/my-events/{$this->noticeId}", $this->adminId);
+        [$status, $body] = $this->get("/api/clubs/{$this->clubId}/my-events/{$this->noticeId}", $this->adminId);
+        $this->assertSame(200, $status);
+        $this->assertSame('notice', $body['event']['type']);
+        [$status] = $this->get("/api/clubs/{$this->clubId}/my-events/{$this->draftNoticeId}", $this->adminId);
         $this->assertSame(404, $status);
         [$status] = $this->get("/api/clubs/{$this->clubId}/my-events/{$this->eventId}", $this->adminId);
         $this->assertSame(200, $status);

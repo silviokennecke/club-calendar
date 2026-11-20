@@ -4368,7 +4368,7 @@ paths:
     get:
       tags: [Clubs]
       summary: One event of the personal subscription
-      description: A published event of the effective feeds; drafts, notices, events of other feeds and unknown ids are the same 404.
+      description: A published event or notice (`event.type`) of the effective feeds; drafts, events of other feeds and unknown ids are the same 404.
       operationId: getMyEvent
       responses:
         '200':
@@ -4569,7 +4569,7 @@ paths:
     get:
       tags: [Public feed]
       summary: ICS download of one published event of a feed
-      description: Same access and 404 rules as `/api/feed/{feedId}/events/{eventId}` (secret first). The VEVENT and VTIMEZONE are rendered exactly like in the feed ICS (summary, description, location, geo). No ETag; `Cache-Control` is `private, no-store`.
+      description: Same access and 404 rules as `/api/feed/{feedId}/events/{eventId}` (secret first), except that a notice is always 404 here. The VEVENT and VTIMEZONE are rendered exactly like in the feed ICS (summary, description, location, geo). No ETag; `Cache-Control` is `private, no-store`.
       operationId: publicFeedEventIcs
       security: [{}, { feedSecret: [] }]
       parameters:
@@ -6786,7 +6786,7 @@ components:
     PublicEvent:
       type: object
       required: [id, calendarId, type, name, date, dateEnd, timeBegin, timeEnd, isAllDay, note, timezone, location, properties, features, targetGroups]
-      description: 'Item of the web views. Notices (`type` `notice`) appear here only (never in any ICS, the sitemap or as a detail route, which is 404 for them); they are all-day, may span days via `dateEnd`, and have no location, badges or extras.'
+      description: 'Item of the web views. Notices (`type` `notice`) appear in the web views and their detail routes only (never in any ICS, including the one-event ICS (404), or the sitemap); they are all-day, may span days via `dateEnd`, and have no location, badges or extras.'
       properties:
         id: { type: string }
         calendarId: { type: string }

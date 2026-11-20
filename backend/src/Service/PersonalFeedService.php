@@ -148,9 +148,7 @@ class PersonalFeedService
         if ([] !== $selection->branches(null)) {
             $event = $this->baseQuery($selection, null, null, null)
                 ->andWhere('e.id = :eventId')
-                ->andWhere('e.type = :eventType')
                 ->setParameter('eventId', $eventId)
-                ->setParameter('eventType', \App\Enum\EventType::Event)
                 ->getQuery()
                 ->getOneOrNullResult();
         }
