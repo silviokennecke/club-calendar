@@ -50,7 +50,7 @@ Each entry names the calendar, the time span and whether the other event is a dr
 
 **Badges, extras and audiences**
 
-Here you assign [badges](help:organize/properties), [extras](help:organize/features) and [audiences](help:organize/target-groups) to the event. If you pick no audience, the event applies to everyone. If something is missing, you can create it right here.
+Here you assign [badges](help:organize/properties), [extras](help:organize/features) and [audiences](help:organize/target-groups) to the event. If you pick no audience, the event applies to everyone. If something is missing, you can create it right here. The suggestions show what you used most recently first.
 
 **Note**
 

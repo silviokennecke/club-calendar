@@ -18,6 +18,7 @@ import {
 import { AuthContext, type AuthContextValue } from "./auth-context";
 import { dropBackupCodeNoticeUnless } from "./backupCodeNotice";
 import { clearDrafts } from "./events/draft";
+import { clearRecent } from "./events/recent";
 import i18n from "./i18n";
 import { clearStepUp } from "./stepUp";
 import type { User } from "./types";
@@ -120,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearStepUp();
     storeTokens(accessToken, refreshToken);
     clearDrafts(user.id);
+    clearRecent(user.id);
     applyUserLanguage(user);
     setUser(user);
     setSessionError(false);
@@ -133,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearTokens();
     broadcastLogout();
     clearDrafts();
+    clearRecent();
     // Cached clubs/events of this account must not show up for the next one in the same tab.
     queryClient.clear();
     setUser(null);
@@ -146,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onRemoteSignOut(() => {
         decision.current++;
         clearDrafts();
+        clearRecent();
         queryClient.clear();
         setUser(null);
         setSessionError(false);

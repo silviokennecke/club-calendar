@@ -23,6 +23,8 @@ interface AssignmentFieldsProps {
   variant?: "toggle" | "combobox";
   /** Only the audiences (notices have no badges and extras). */
   audiencesOnly?: boolean;
+  /** Ids in order of last use per type (combobox variant). */
+  recent?: { properties?: string[]; features?: string[]; targetGroups?: string[] };
 }
 
 /**
@@ -38,6 +40,7 @@ export function AssignmentFields({
   targetGroupsHint,
   variant = "toggle",
   audiencesOnly,
+  recent,
 }: AssignmentFieldsProps) {
   const { t } = useTranslation();
 
@@ -63,6 +66,7 @@ export function AssignmentFields({
                 label: p.icon ? `${p.icon} ${p.name}` : p.name,
               }))}
               selected={value.propertyIds}
+              recent={recent?.properties}
               onChange={(ids) => onChange("propertyIds", ids)}
               onCreate={readOnly ? undefined : (name) => create(res.createProperty, name)}
               addLabel={t("events.form.createProperty")}
@@ -71,6 +75,7 @@ export function AssignmentFields({
               label={t("events.form.features")}
               options={res.features.map((f) => ({ id: f.id, label: f.name }))}
               selected={value.featureIds}
+              recent={recent?.features}
               onChange={(ids) => onChange("featureIds", ids)}
               onCreate={readOnly ? undefined : (name) => create(res.createFeature, name)}
               addLabel={t("events.form.createFeature")}
@@ -81,6 +86,7 @@ export function AssignmentFields({
           label={t("events.form.targetGroups")}
           options={res.targetGroups.map((g) => ({ id: g.id, label: g.name }))}
           selected={value.targetGroupIds}
+          recent={recent?.targetGroups}
           onChange={(ids) => onChange("targetGroupIds", ids)}
           onCreate={
             readOnly || !canCreateTargetGroups

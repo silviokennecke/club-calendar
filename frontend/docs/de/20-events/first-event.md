@@ -50,7 +50,7 @@ Jeder Eintrag nennt Kalender, Zeitraum und ob der andere Termin ein Entwurf ist.
 
 **Besonderheiten, Zusatzangebote und Gruppen**
 
-Hier ordnest du dem Termin [Besonderheiten](help:organize/properties), [Zusatzangebote](help:organize/features) und [Gruppen](help:organize/target-groups) zu. Wählst du keine Gruppe, gilt der Termin für alle. Fehlt etwas, kannst du es hier gleich neu anlegen.
+Hier ordnest du dem Termin [Besonderheiten](help:organize/properties), [Zusatzangebote](help:organize/features) und [Gruppen](help:organize/target-groups) zu. Wählst du keine Gruppe, gilt der Termin für alle. Fehlt etwas, kannst du es hier gleich neu anlegen. Die Vorschläge zeigen zuerst, was du zuletzt verwendet hast.
 
 **Notiz**
 

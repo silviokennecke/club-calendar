@@ -4,8 +4,9 @@ import { rankByRelevance } from "@/lib/fuzzySearch";
 import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
 import { Chip, type ChipOption } from "./ChipSelect";
+import { sortSuggestions } from "./sortSuggestions";
 
-/** Suggestions shown for an empty input (oldest first). */
+/** Suggestions shown for an empty input (most recently used first, then newest). */
 const EMPTY_QUERY_LIMIT = 5;
 const MAX_RESULTS = 8;
 
@@ -21,6 +22,8 @@ interface ChipComboboxProps {
   /** Text of the trailing add chip and accessible name of the input. */
   addLabel: string;
   className?: string;
+  /** Ids in order of last use (first = latest); orders the suggestions for an empty input. */
+  recent?: string[];
 }
 
 type Row = { kind: "option"; option: ChipOption } | { kind: "create" };
@@ -28,8 +31,8 @@ type Row = { kind: "option"; option: ChipOption } | { kind: "create" };
 /**
  * Multi-select that shows only the assigned entries as chips. A trailing add chip turns into a
  * combobox: Enter takes the highlighted suggestion (the first one by default), the last row
- * creates a new entry from the typed text. Options are ordered by id, which is creation order
- * for UUID v7 (the API has no createdAt).
+ * creates a new entry from the typed text. Without input the suggestions are ordered by `recent`,
+ * then by id descending, which is newest first for UUID v7 (the API has no createdAt).
  */
 export function ChipCombobox({
   label,
@@ -40,6 +43,7 @@ export function ChipCombobox({
   onCreate,
   addLabel,
   className,
+  recent,
 }: ChipComboboxProps) {
   const { t } = useTranslation();
   const listId = useId();
@@ -56,11 +60,11 @@ export function ChipCombobox({
     const free = options.filter((o) => !selected.includes(o.id));
     const found = text
       ? rankByRelevance(free, text, ["label"]).slice(0, MAX_RESULTS)
-      : [...free].sort((a, b) => a.id.localeCompare(b.id)).slice(0, EMPTY_QUERY_LIMIT);
+      : sortSuggestions(free, recent).slice(0, EMPTY_QUERY_LIMIT);
     const list: Row[] = found.map((option) => ({ kind: "option", option }));
     if (onCreate) list.push({ kind: "create" });
     return list;
-  }, [options, selected, text, onCreate]);
+  }, [options, selected, text, onCreate, recent]);
 
   const rowId = (i: number) => `${listId}-${i}`;
   const current = Math.min(active, rows.length - 1);

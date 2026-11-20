@@ -63,6 +63,7 @@ import { createGate, gateTitle } from "@/components/events/createGateState";
 import { ResourceConflictList } from "@/components/events/ResourceConflictList";
 import { useEventConflicts } from "@/components/events/useEventConflicts";
 import { useEventResources } from "@/components/events/useEventResources";
+import { useRecentSelections } from "@/lib/events/useRecentSelections";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { useLocale } from "@/components/calendar/useLocale";
 import { useEventDraft } from "@/lib/events/useEventDraft";
@@ -227,6 +228,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const page = useEventPage();
   const nav = useModalNav();
   const res = useEventResources(page.clubId, page.calendarId);
+  const recentSel = useRecentSelections(page.clubId, page.calendarId);
   const qc = useQueryClient();
   const { t } = useTranslation();
   const locale = useLocale();
@@ -368,6 +370,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
         }),
       );
       const savedId = event?.id ?? saved?.id;
+      recentSel.record(values, isNew ? undefined : initial);
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
       toast.success(scope === "all" ? t("events.seriesScope.savedAll") : t(`${nk}.saved`));
       // Back on the page, focus the saved event (if it is shown there).
@@ -655,6 +658,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               readOnly={readOnly}
               canCreateTargetGroups={page.roleCanManageClub}
               variant="combobox"
+              recent={recentSel.recent}
               audiencesOnly={isNotice}
             />
           </section>

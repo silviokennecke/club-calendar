@@ -237,10 +237,10 @@ describe("EventFormModal – new event", () => {
     ).toHaveAttribute("src", expect.stringContaining("/api/map/image/location/l1"));
     expect(screen.queryByRole("button", { name: "Position korrigieren" })).toBeNull();
     const audiences = screen.getByRole("group", { name: "Gruppen" });
-    expect(within(audiences).queryByRole("button", { name: "Jugend" })).toBeNull();
+    expect(within(audiences).queryByRole("button", { name: "Erwachsene" })).toBeNull();
     await user.click(within(audiences).getByRole("button", { name: "Neue Gruppe anlegen" }));
     await user.keyboard("{Enter}");
-    expect(within(audiences).getByRole("button", { name: "Jugend" })).toHaveAttribute(
+    expect(within(audiences).getByRole("button", { name: "Erwachsene" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -258,7 +258,7 @@ describe("EventFormModal – new event", () => {
         locationId: "l1",
         propertyIds: [],
         featureIds: [],
-        targetGroupIds: ["g1"],
+        targetGroupIds: ["g2"],
         note: "",
       }),
     );
@@ -371,10 +371,10 @@ describe("EventFormModal – new event", () => {
     expect(screen.getAllByRole("option")[0]).toHaveAttribute("aria-selected", "true");
     await user.keyboard("{Enter}");
     const audiences = screen.getByRole("group", { name: "Gruppen" });
-    expect(within(audiences).getByRole("button", { name: "Jugend" })).toBeVisible();
-    expect(screen.queryByRole("option", { name: "Jugend" })).toBeNull();
+    expect(within(audiences).getByRole("button", { name: "Erwachsene" })).toBeVisible();
+    expect(screen.queryByRole("option", { name: "Erwachsene" })).toBeNull();
     await user.type(input, "{Backspace}");
-    expect(within(audiences).queryByRole("button", { name: "Jugend" })).toBeNull();
+    expect(within(audiences).queryByRole("button", { name: "Erwachsene" })).toBeNull();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("combobox", { name: "Neue Gruppe anlegen" })).toBeNull();
   });
