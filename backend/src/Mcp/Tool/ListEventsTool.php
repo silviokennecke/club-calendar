@@ -31,7 +31,7 @@ final class ListEventsTool
         #[Schema(description: 'First day of the range, strictly YYYY-MM-DD (events overlapping the range are included).')] ?string $from = null,
         #[Schema(description: 'Last day of the range, strictly YYYY-MM-DD; at most 1830 days after from.')] ?string $to = null,
         #[Schema(description: 'Search text (max 100 characters) in name, note, location and extra (feature) names.')] ?string $q = null,
-        #[Schema(description: 'List of audience (target group) UUIDs (from list_target_groups); events of any of them.')] ?array $targetGroupIds = null,
+        #[Schema(description: 'List of audience (target group) UUIDs (from list_target_groups); events of any of them, plus events without any audience (they apply to everyone).')] ?array $targetGroupIds = null,
         #[Schema(description: 'Page size, 1 to 5000 (default 5000).')] ?int $limit = null,
         #[Schema(description: 'Number of events to skip (default 0).')] ?int $offset = null,
         #[Schema(description: 'Only entries of this type: "event" or "notice" (default: both).')] ?string $type = null,

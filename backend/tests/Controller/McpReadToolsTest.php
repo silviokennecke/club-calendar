@@ -291,6 +291,24 @@ class McpReadToolsTest extends WebTestCase
         $this->assertError($this->call($this->viewer, 'list_events', ['calendarId' => $cid, 'q' => str_repeat('a', 101)]), 'q');
     }
 
+    public function testGroupFilterIncludesEventsWithoutGroups(): void
+    {
+        $cid = $this->calendar->getId();
+        $youth = TestHelper::createTargetGroup($this->em, $this->club, 'Youth');
+        $adults = TestHelper::createTargetGroup($this->em, $this->club, 'Adults');
+        $with = TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Mit', 'isDraft' => false]);
+        $other = TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Andere', 'isDraft' => false]);
+        TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Ohne', 'isDraft' => false]);
+        $this->em->persist((new \App\Entity\EventTargetGroup())->setEvent($with)->setTargetGroup($youth));
+        $this->em->persist((new \App\Entity\EventTargetGroup())->setEvent($other)->setTargetGroup($adults));
+        $this->em->flush();
+
+        $r = $this->ok($this->viewer, 'list_events', ['calendarId' => $cid, 'targetGroupIds' => [$youth->getId()]]);
+        $names = array_column($r['items'], 'name');
+        sort($names);
+        $this->assertSame(['Mit', 'Ohne'], $names);
+    }
+
     public function testFeedsNeedEditorAndCarrySecret(): void
     {
         $feed = TestHelper::createFeed($this->em, $this->club, [$this->calendar], \App\Enum\FeedVisibility::PRIVATE, 'Privat', 'geheim-123');

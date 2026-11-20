@@ -264,7 +264,7 @@ info:
     | --- | --- | --- | --- |
     | `list_clubs` | read | viewer; member with a permission | clubs with the caller's role; a plain member sees the club only with the calendars they hold a permission for (`calendars`) |
     | `list_calendars` | read | viewer; member with a permission | a plain member sees only their calendars |
-    | `list_events` | read | viewer; calendar | `from`/`to`/`q`/`limit`/`offset` with the caps of `GET …/events`, optional `type` filter (`event`\|`notice`); every entry carries `type`; drafts only for editors and calendar permission holders |
+    | `list_events` | read | viewer; calendar | `from`/`to`/`q`/`limit`/`offset` with the caps of `GET …/events`, optional `targetGroupIds` (audiences; events of any of them plus events without any audience), optional `type` filter (`event`\|`notice`); every entry carries `type`; drafts only for editors and calendar permission holders |
     | `get_event` | read | viewer; calendar | drafts only for editors and calendar permission holders |
     | `list_target_groups`, `list_locations` | read | viewer; member with a permission | club-scoped, read only |
     | `list_properties`, `list_features` | read | viewer; calendar | calendar-scoped |
