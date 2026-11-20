@@ -162,8 +162,14 @@ export default function PublicEventModal() {
     <EventDetail
       event={event}
       feed={one.data.feed}
-      onAddToCalendar={async () =>
-        downloadBlob(await fetchPublicEventIcs(feedId, event.id, secret), icsFileName(event.name))
+      onAddToCalendar={
+        event.type === "notice"
+          ? undefined
+          : async () =>
+              downloadBlob(
+                await fetchPublicEventIcs(feedId, event.id, secret),
+                icsFileName(event.name),
+              )
       }
       onClose={nav.close}
     />
@@ -192,17 +198,20 @@ export function EventDetail({ event, feed, onAddToCalendar, onClose }: EventDeta
           to: formatWeekdayDate(end, locale),
         })
       : formatWeekdayDate(start, locale);
+  const isNotice = event.type === "notice";
   const timeText = event.isAllDay
     ? t("feed.event.allDay")
     : t("feed.event.timeRange", { from: event.timeBegin, to: event.timeEnd });
 
-  const loc = event.location;
+  const loc = isNotice ? null : event.location;
   const address = loc ? formatAddress(loc) : "";
   const placeName = loc?.name || address;
   const hasPlace = !!loc && !!(loc.name || address);
   const hasCoords = !!loc && loc.latitude != null && loc.longitude != null;
   const mapHref = loc ? mapLinkFor(loc, address) : null;
-  const icons = event.properties.filter((p) => p.property.icon);
+  const properties = isNotice ? [] : event.properties;
+  const features = isNotice ? [] : event.features;
+  const icons = properties.filter((p) => p.property.icon);
 
   async function addToCalendar() {
     try {
@@ -237,10 +246,12 @@ export function EventDetail({ event, feed, onAddToCalendar, onClose }: EventDeta
           <dt>{t("feed.event.date")}</dt>
           <dd>{dateText}</dd>
         </div>
-        <div className="ap-datafield">
-          <dt>{t("feed.event.time")}</dt>
-          <dd>{timeText}</dd>
-        </div>
+        {!isNotice && (
+          <div className="ap-datafield">
+            <dt>{t("feed.event.time")}</dt>
+            <dd>{timeText}</dd>
+          </div>
+        )}
       </dl>
 
       {event.note && (
@@ -296,17 +307,15 @@ export function EventDetail({ event, feed, onAddToCalendar, onClose }: EventDeta
         </section>
       )}
 
-      {(event.properties.length > 0 ||
-        event.features.length > 0 ||
-        event.targetGroups.length > 0) && (
+      {(properties.length > 0 || features.length > 0 || event.targetGroups.length > 0) && (
         <div className="ap-cols-3">
-          {event.properties.length > 0 && (
+          {properties.length > 0 && (
             <section className="ap-stack ap-stack--sm" aria-labelledby="pe-props">
               <h2 className="t-label" id="pe-props">
                 {t("feed.event.properties")}
               </h2>
               <ul className="ap-chips" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                {event.properties.map(({ property }) => (
+                {properties.map(({ property }) => (
                   <li key={property.id} className="ap-chip ap-chip--static">
                     {property.icon && (
                       <span className="ap-ico" aria-hidden="true">
@@ -319,13 +328,13 @@ export function EventDetail({ event, feed, onAddToCalendar, onClose }: EventDeta
               </ul>
             </section>
           )}
-          {event.features.length > 0 && (
+          {features.length > 0 && (
             <section className="ap-stack ap-stack--sm" aria-labelledby="pe-feat">
               <h2 className="t-label" id="pe-feat">
                 {t("feed.event.features")}
               </h2>
               <ul className="ap-chips" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                {event.features.map(({ feature }) => (
+                {features.map(({ feature }) => (
                   <li key={feature.id} className="ap-chip ap-chip--static">
                     {feature.name}
                   </li>

@@ -22,7 +22,7 @@ export interface PublicFeedLocation {
 /** An event as `GET /api/feed/{id}/events` delivers it (published events only). */
 export interface PublicFeedEvent {
   id: string;
-  /** Absent = "event". A notice (Hinweis) has no detail page, location, badges or extras. */
+  /** Absent = "event". A notice (Hinweis) has no time, location, badges, extras or ICS download. */
   type?: "event" | "notice";
   name: string;
   date: string;

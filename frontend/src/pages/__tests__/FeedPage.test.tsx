@@ -328,14 +328,14 @@ describe("FeedPage", () => {
       timeEnd: "00:00",
     });
 
-    it("is not empty with only notices and shows them in the list without a link", async () => {
+    it("is not empty with only notices and lists them as openable items", async () => {
       respond = feedApi({ events: [notice], header: { eventCount: 0, noticeCount: 1 } });
       renderAt("/feed/f1?view=list");
       expect(await screen.findByText("Halle gesperrt")).toBeVisible();
       expect(
         screen.queryByRole("heading", { name: "Noch keine Termine veröffentlicht" }),
       ).toBeNull();
-      expect(screen.queryByRole("button", { name: "Halle gesperrt" })).toBeNull();
+      expect(screen.getByRole("button", { name: /Halle gesperrt/ })).toBeVisible();
       expect(screen.getByText("Hinweis")).toBeVisible();
       expect(
         screen.getByText("Hinweise erscheinen nur auf dieser Seite, nicht in der Kalender-App."),
@@ -351,6 +351,24 @@ describe("FeedPage", () => {
       const grid = await screen.findByRole("grid");
       expect(within(grid).getAllByTitle(/^Hinweis: Halle gesperrt/)[0]).toBeInTheDocument();
       expect(within(grid).getByLabelText(/^12\. Oktober.*1 Hinweis/)).toBeInTheDocument();
+    });
+
+    it("opens a notice detail without time, place or calendar download", async () => {
+      const withGroup = {
+        ...notice,
+        note: "Wegen Wartung.",
+        targetGroups: [{ targetGroup: youth }],
+      };
+      respond = feedApi({ events: [withGroup], header: { eventCount: 0, noticeCount: 1 } });
+      renderAt("/feed/f1/events/n1");
+      await screen.findByRole("heading", { level: 2, name: "Halle gesperrt" });
+      expect(screen.getByText("Wegen Wartung.")).toBeVisible();
+      expect(
+        within(screen.getByRole("region", { name: "Gruppen" })).getByText("Jugend"),
+      ).toBeVisible();
+      expect(screen.queryByText("Uhrzeit")).toBeNull();
+      expect(screen.queryByRole("region", { name: "Ort" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Zum Kalender hinzufügen" })).toBeNull();
     });
 
     it("has no calendar-app hint when the feed has no notices", async () => {

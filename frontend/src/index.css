@@ -2713,11 +2713,8 @@
     border-style: dashed;
     border-left-style: solid;
   }
-  .ap-evchip--notice[data-noopen] {
-    cursor: default;
-  }
   @media (hover: hover) {
-    .ap-evchip--notice:not([data-noopen]):hover {
+    .ap-evchip--notice:hover {
       background: color-mix(in srgb, var(--info) 22%, var(--surface-raised));
     }
   }

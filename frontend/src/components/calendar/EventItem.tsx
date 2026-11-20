@@ -44,7 +44,7 @@ export function EventItem({
   const Heading = headingLevel;
   const meta = [itemTimeText(item, t), place].filter(Boolean).join(" · ");
   const isNotice = item.kind === "notice";
-  const clickable = !!onOpen && status !== "holiday" && !item.noOpen;
+  const clickable = !!onOpen && status !== "holiday";
 
   return (
     <article

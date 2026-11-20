@@ -42,14 +42,6 @@ describe("EventItem", () => {
     fireEvent.click(screen.getByRole("button", { name: "Halle zu" }));
     expect(onOpen).toHaveBeenCalled();
   });
-
-  it("shows a notice without detail page as plain text", () => {
-    const item = { ...eventToItem({ ...event, type: "notice", name: "Halle zu" }), noOpen: true };
-    render(<EventItem item={item} onOpen={vi.fn()} showStatus={false} />);
-    expect(screen.queryByRole("button")).toBeNull();
-    expect(screen.getByText("Halle zu")).toBeVisible();
-    expect(screen.getByText("Hinweis")).toBeVisible();
-  });
 });
 
 describe("EventChip notice", () => {
@@ -61,11 +53,5 @@ describe("EventChip notice", () => {
     expect(btn).toHaveClass("ap-evchip--notice", "ap-evchip--notice-draft");
     expect(btn.title).toContain("Hinweis");
     expect(btn.querySelector("b")).toBeNull();
-  });
-
-  it("is not clickable when it has no detail page", () => {
-    render(<EventChip item={{ ...notice, noOpen: true }} onOpen={vi.fn()} />);
-    expect(screen.queryByRole("button")).toBeNull();
-    expect(screen.getByText("Halle zu").closest("span.ap-evchip")).toHaveAttribute("title");
   });
 });

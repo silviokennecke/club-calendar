@@ -107,11 +107,7 @@ export function PublicCalendarView({
   const [rangeFrom, rangeTo] = range;
   // Holidays of the calendar like in the internal month view
   const items = useMemo<CalItem[]>(() => {
-    // Notices have no detail page: shown, not openable.
-    const evs: CalItem[] = filtered.map((ev) => {
-      const item = eventToItem(ev);
-      return item.kind === "notice" ? { ...item, noOpen: true } : item;
-    });
+    const evs: CalItem[] = filtered.map((ev) => eventToItem(ev));
     if (hideHolidays) return evs;
     const holidays = data.holidays
       .map((h) => holidayToItem(h))
@@ -141,7 +137,7 @@ export function PublicCalendarView({
   }
 
   function openItem(item: CalItem) {
-    if (item.kind === "event") onOpenEvent(item.id);
+    if (item.kind === "event" || item.kind === "notice") onOpenEvent(item.id);
   }
 
   const placeOf = (item: CalItem) => {
@@ -150,7 +146,7 @@ export function PublicCalendarView({
     return loc ? loc.name || formatAddress(loc) : null;
   };
   const tagsOf = (item: CalItem): EventItemTag[] =>
-    item.kind !== "event"
+    item.kind === "holiday"
       ? []
       : sortTargetGroupRefs((item.source as PublicFeedEvent).targetGroups).map(
           ({ targetGroup }) => ({

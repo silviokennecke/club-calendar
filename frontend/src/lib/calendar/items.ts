@@ -25,8 +25,6 @@ export interface CalItem<T = unknown> {
   iconLabel: string;
   /** Event of a series (tag "Wiederkehrend"). */
   recurring?: boolean;
-  /** Notice without a detail view (public feed): shown, but not openable. */
-  noOpen?: boolean;
   /** The original record (event, notice or holiday). */
   source: T;
 }

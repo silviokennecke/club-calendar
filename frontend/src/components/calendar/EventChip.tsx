@@ -47,7 +47,6 @@ export function EventChip({
   const status = itemStatus(item);
   const summary = itemSummary(item, t);
   const isNotice = item.kind === "notice";
-  const noOpen = isNotice && !!item.noOpen;
   const className = cn(
     "ap-evchip",
     isNotice ? "ap-evchip--notice" : `ap-evchip--${status}`,
@@ -68,22 +67,6 @@ export function EventChip({
         <Icon glyph="flag" size={12} />
         <span className="t">{item.title}</span>
         <span className="ap-sr"> {t("calendar.chip.holiday")}</span>
-      </span>
-    );
-  }
-
-  if (noOpen) {
-    return (
-      <span
-        className={className}
-        style={style}
-        title={summary}
-        data-noopen=""
-        aria-hidden={presentational || undefined}
-      >
-        <Icon glyph="info" size={12} />
-        <span className="t">{item.title}</span>
-        <span className="ap-sr"> {t("calendar.chip.notice")}</span>
       </span>
     );
   }
