@@ -215,6 +215,9 @@ export default function CalendarPage() {
   const routes = eventRoutes(base);
   const navState = openModalState(location);
 
+  // Only a day the user picked (open day panel) is preselected; the anchor alone is not a selection.
+  const selectedDay = view === "month" && panelOpen ? anchor : undefined;
+
   function openCreate(date?: string) {
     routerNavigate(routes.form(date), { state: navState });
   }
@@ -400,12 +403,16 @@ export default function CalendarPage() {
           setAnchor(today, { replace: latestAnchor.current === today });
         }}
         archived={isArchived}
-        onCreate={canEdit ? () => openCreate() : undefined}
+        onCreate={canEdit ? () => openCreate(selectedDay) : undefined}
         onCreateFromTemplate={
-          canEdit ? () => routerNavigate(routes.pickTemplate(), { state: navState }) : undefined
+          canEdit
+            ? () => routerNavigate(routes.pickTemplate(selectedDay), { state: navState })
+            : undefined
         }
         onCreateNotice={
-          canEdit ? () => routerNavigate(routes.noticeForm(), { state: navState }) : undefined
+          canEdit
+            ? () => routerNavigate(routes.noticeForm(selectedDay), { state: navState })
+            : undefined
         }
         importHref={canEdit ? `${base}/import` : undefined}
       />

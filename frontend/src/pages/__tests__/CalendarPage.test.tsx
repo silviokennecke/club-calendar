@@ -388,6 +388,17 @@ describe("CalendarPage – month view", () => {
     );
   });
 
+  it("presets the selected day when adding an event from the toolbar", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const g = await grid();
+    await user.click(within(g).getByRole("button", { name: /^14\. Oktober/ }));
+    await user.click(await screen.findByRole("button", { name: "Termin anlegen" }));
+    expect(await screen.findByTestId("modal-location")).toHaveTextContent(
+      "/clubs/c1/calendars/k1/events/new/form?date=2026-10-14",
+    );
+  });
+
   it("opens the new-event start screen on a double click on a day", async () => {
     const user = userEvent.setup();
     renderPage();
