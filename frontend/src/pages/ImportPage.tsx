@@ -20,6 +20,7 @@ import { conflictsFromError } from "@/lib/events";
 import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
 import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
 import { useEventResources } from "@/components/events/useEventResources";
+import { useRecentSelections } from "@/lib/events/useRecentSelections";
 import { ImportDone, type ImportResult } from "@/components/import/ImportDone";
 import { ImportReview } from "@/components/import/ImportReview";
 import { ImportUpload, type ParsedFile } from "@/components/import/ImportUpload";
@@ -48,6 +49,7 @@ function Import() {
   const page = useEventPage();
   const qc = useQueryClient();
   const resources = useEventResources(page.clubId, page.calendarId);
+  const recentSel = useRecentSelections(page.clubId, page.calendarId);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -160,6 +162,15 @@ function Import() {
         ...request,
         skipDuplicates: false,
       });
+      // Imported events start without assignments, so every id on them was chosen in the review.
+      const union = (f: "propertyIds" | "featureIds" | "targetGroupIds") => [
+        ...new Set(chosen.flatMap((i) => i[f])),
+      ];
+      recentSel.record({
+        propertyIds: union("propertyIds"),
+        featureIds: union("featureIds"),
+        targetGroupIds: union("targetGroupIds"),
+      });
       const placeNames = new Map(request.locations.map((l) => [l.tempId, l.name]));
       setResult({
         kind: "ok",
@@ -252,6 +263,7 @@ function Import() {
               recurrence={file.recurrence}
               locations={resources.locations}
               resources={resources}
+              recent={recentSel.recent}
               check={check}
               checking={
                 preview.status === "loading" || (preview.status === "ready" && preview.stale)

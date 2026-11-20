@@ -38,6 +38,7 @@ import {
 import { AssignmentFields } from "@/components/events/AssignmentFields";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useEventResources } from "@/components/events/useEventResources";
+import { useRecentSelections } from "@/lib/events/useRecentSelections";
 import type { EventNavState } from "@/components/events/routes";
 import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
 import { usePageTitle } from "@/lib/usePageTitle";
@@ -133,6 +134,7 @@ function TemplateLoader() {
 function TemplateEditor({ template }: { template?: EventTemplate }) {
   const page = useEventPage();
   const res = useEventResources(page.clubId, page.calendarId);
+  const recentSel = useRecentSelections(page.clubId, page.calendarId);
   const navigate = useNavigate();
   const location = useLocation();
   const qc = useQueryClient();
@@ -199,6 +201,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
             body.locationId && existing.locations.has(body.locationId) ? body.locationId : null,
         }),
       );
+      recentSel.record(values, isNew ? undefined : initial);
       await qc.invalidateQueries({ queryKey: ["templates", page.calendarId] });
       toast.success(t("templates.form.saved"));
       navigate(returnTo);
@@ -378,6 +381,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
             </Field>
 
             <AssignmentFields
+              recent={recentSel.recent}
               resources={res}
               value={values}
               onChange={(field, ids) => set(field, ids)}

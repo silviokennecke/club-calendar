@@ -55,8 +55,10 @@ test.describe("Vorlagen", () => {
     await page.getByLabel("Startzeit").fill("19:00");
     await page.getByLabel("Endzeit").fill("21:00");
     await page.getByLabel(/Standardort/).selectOption({ label: "Schützenhaus Waldblick" });
-    await page.getByRole("button", { name: "Erwachsene" }).click();
-    await page.getByRole("button", { name: "Bonusschießen" }).click();
+    await page.getByRole("button", { name: "Neue Gruppe anlegen" }).click();
+    await page.getByRole("option", { name: "Erwachsene" }).click();
+    await page.getByRole("button", { name: "Neues Zusatzangebot anlegen" }).click();
+    await page.getByRole("option", { name: "Bonusschießen" }).click();
     await page.getByRole("button", { name: "Vorlage speichern" }).click();
 
     await expect(page.getByText("Vorlage gespeichert.")).toBeVisible();

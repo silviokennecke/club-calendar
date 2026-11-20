@@ -19,7 +19,7 @@ import {
 import type { Location } from "@/lib/types";
 import { useIsMobile } from "@/lib/useMediaQuery";
 import { Banner, Button } from "@/components/ui/shared";
-import { AssignmentFields } from "@/components/events/AssignmentFields";
+import { AssignmentFields, type AssignmentRecent } from "@/components/events/AssignmentFields";
 import { StatusSeg } from "@/components/events/StatusSeg";
 import type { useEventResources } from "@/components/events/useEventResources";
 import { ImportEditDialog, type EditTarget } from "./ImportEditDialog";
@@ -38,6 +38,7 @@ interface ImportReviewProps {
   recurrence: RecurrenceStats;
   locations: Location[];
   resources: ReturnType<typeof useEventResources>;
+  recent?: AssignmentRecent;
   /** The backend's preview (or the browser's fallback check); null while it is pending. */
   check: ImportCheck | null;
   /** A (new) preview is running. */
@@ -66,6 +67,7 @@ export function ImportReview({
   recurrence,
   locations,
   resources,
+  recent,
   check,
   checking,
   timeZone,
@@ -301,6 +303,7 @@ export function ImportReview({
             </span>
           </fieldset>
           <AssignmentFields
+            recent={recent}
             resources={resources}
             value={{
               propertyIds: commonIds(selected, "propertyIds"),
@@ -384,6 +387,7 @@ export function ImportReview({
           items={items}
           locations={locations}
           resources={resources}
+          recent={recent}
           canCreateClubData={canCreateClubData}
           onClose={() => setEditing(null)}
           onSubmit={(update) => {

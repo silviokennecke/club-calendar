@@ -29,7 +29,11 @@ import {
   UnsavedChangesDialog,
 } from "@/components/ui/shared";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
-import { AssignmentFields, type Assignments } from "@/components/events/AssignmentFields";
+import {
+  AssignmentFields,
+  type AssignmentRecent,
+  type Assignments,
+} from "@/components/events/AssignmentFields";
 import { StatusSeg } from "@/components/events/StatusSeg";
 import type { useEventResources } from "@/components/events/useEventResources";
 
@@ -41,6 +45,7 @@ interface ImportEditDialogProps {
   items: ImportItem[];
   locations: Location[];
   resources: ReturnType<typeof useEventResources>;
+  recent?: AssignmentRecent;
   onClose: () => void;
   /** False for calendar members: no new audiences from the dialog (club data). */
   canCreateClubData?: boolean;
@@ -84,6 +89,7 @@ export function ImportEditDialog({
   resources,
   onClose,
   canCreateClubData = true,
+  recent,
   onSubmit,
 }: ImportEditDialogProps) {
   const { t } = useTranslation();
@@ -319,6 +325,7 @@ export function ImportEditDialog({
           </NativeSelect>
         </Field>
         <AssignmentFields
+          recent={recent}
           resources={resources}
           value={values}
           onChange={(field, ids) => set(field, ids)}

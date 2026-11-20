@@ -154,8 +154,8 @@ test.describe("Import", () => {
       .click();
     const dialog = page.getByRole("dialog", { name: "Gruppe bearbeiten: Training Luftgewehr" });
     await dialog.getByRole("button", { name: "Neue Gruppe anlegen" }).click();
-    await dialog.getByLabel("Name", { exact: true }).last().fill("Erwachsene");
-    await dialog.getByRole("button", { name: "Anlegen und zuweisen" }).click();
+    await dialog.getByRole("combobox", { name: "Neue Gruppe anlegen" }).fill("Erwachsene");
+    await dialog.getByRole("option", { name: /neu anlegen/ }).click();
     await expect(dialog.getByRole("button", { name: "Erwachsene" })).toHaveAttribute(
       "aria-pressed",
       "true",

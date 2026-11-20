@@ -657,7 +657,6 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               onChange={(field, ids) => set(field, ids)}
               readOnly={readOnly}
               canCreateTargetGroups={page.roleCanManageClub}
-              variant="combobox"
               recent={recentSel.recent}
               audiencesOnly={isNotice}
             />

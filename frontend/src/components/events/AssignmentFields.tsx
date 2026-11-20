@@ -1,12 +1,18 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ChipCombobox, ChipSelect, toast } from "@/components/ui/shared";
+import { ChipCombobox, toast } from "@/components/ui/shared";
 import type { useEventResources } from "./useEventResources";
 
 export interface Assignments {
   propertyIds: string[];
   featureIds: string[];
   targetGroupIds: string[];
+}
+
+export interface AssignmentRecent {
+  properties?: string[];
+  features?: string[];
+  targetGroups?: string[];
 }
 
 interface AssignmentFieldsProps {
@@ -19,16 +25,14 @@ interface AssignmentFieldsProps {
   canCreateTargetGroups?: boolean;
   /** Help text below the target groups (default: "Ohne Auswahl gilt der Termin für alle."). */
   targetGroupsHint?: ReactNode;
-  /** `combobox`: only assigned entries as chips plus an autosuggest add chip (event form). */
-  variant?: "toggle" | "combobox";
   /** Only the audiences (notices have no badges and extras). */
   audiencesOnly?: boolean;
   /** Ids in order of last use per type (combobox variant). */
-  recent?: { properties?: string[]; features?: string[]; targetGroups?: string[] };
+  recent?: AssignmentRecent;
 }
 
 /**
- * Properties, features and target groups as chip selects with inline creation. Shared by the
+ * Properties, features and target groups as chip comboboxes with inline creation. Shared by the
  * event form, the template form and the import review.
  */
 export function AssignmentFields({
@@ -38,7 +42,6 @@ export function AssignmentFields({
   readOnly,
   canCreateTargetGroups = true,
   targetGroupsHint,
-  variant = "toggle",
   audiencesOnly,
   recent,
 }: AssignmentFieldsProps) {
@@ -54,87 +57,45 @@ export function AssignmentFields({
     }
   }
 
-  if (variant === "combobox") {
-    return (
-      <>
-        {!audiencesOnly && (
-          <>
-            <ChipCombobox
-              label={t("events.form.properties")}
-              options={res.properties.map((p) => ({
-                id: p.id,
-                label: p.icon ? `${p.icon} ${p.name}` : p.name,
-              }))}
-              selected={value.propertyIds}
-              recent={recent?.properties}
-              onChange={(ids) => onChange("propertyIds", ids)}
-              onCreate={readOnly ? undefined : (name) => create(res.createProperty, name)}
-              addLabel={t("events.form.createProperty")}
-            />
-            <ChipCombobox
-              label={t("events.form.features")}
-              options={res.features.map((f) => ({ id: f.id, label: f.name }))}
-              selected={value.featureIds}
-              recent={recent?.features}
-              onChange={(ids) => onChange("featureIds", ids)}
-              onCreate={readOnly ? undefined : (name) => create(res.createFeature, name)}
-              addLabel={t("events.form.createFeature")}
-            />
-          </>
-        )}
-        <ChipCombobox
-          label={t("events.form.targetGroups")}
-          options={res.targetGroups.map((g) => ({ id: g.id, label: g.name }))}
-          selected={value.targetGroupIds}
-          recent={recent?.targetGroups}
-          onChange={(ids) => onChange("targetGroupIds", ids)}
-          onCreate={
-            readOnly || !canCreateTargetGroups
-              ? undefined
-              : (name) => create(res.createTargetGroup, name)
-          }
-          addLabel={t("events.form.createTargetGroup")}
-          hint={
-            targetGroupsHint ??
-            t(audiencesOnly ? "events.notice.targetGroupsHint" : "events.form.targetGroupsHint")
-          }
-        />
-      </>
-    );
-  }
-
   return (
     <>
-      <ChipSelect
-        label={t("events.form.properties")}
-        options={res.properties.map((p) => ({
-          id: p.id,
-          label: p.icon ? `${p.icon} ${p.name}` : p.name,
-        }))}
-        selected={value.propertyIds}
-        onChange={(ids) => onChange("propertyIds", ids)}
-        onCreate={readOnly ? undefined : (name) => create(res.createProperty, name)}
-        createLabel={t("events.form.createProperty")}
-      />
-      <ChipSelect
-        label={t("events.form.features")}
-        options={res.features.map((f) => ({ id: f.id, label: f.name }))}
-        selected={value.featureIds}
-        onChange={(ids) => onChange("featureIds", ids)}
-        onCreate={readOnly ? undefined : (name) => create(res.createFeature, name)}
-        createLabel={t("events.form.createFeature")}
-      />
-      <ChipSelect
+      {!audiencesOnly && (
+        <>
+          <ChipCombobox
+            label={t("events.form.properties")}
+            options={res.properties.map((p) => ({
+              id: p.id,
+              label: p.icon ? `${p.icon} ${p.name}` : p.name,
+            }))}
+            selected={value.propertyIds}
+            recent={recent?.properties}
+            onChange={(ids) => onChange("propertyIds", ids)}
+            onCreate={readOnly ? undefined : (name) => create(res.createProperty, name)}
+            addLabel={t("events.form.createProperty")}
+          />
+          <ChipCombobox
+            label={t("events.form.features")}
+            options={res.features.map((f) => ({ id: f.id, label: f.name }))}
+            selected={value.featureIds}
+            recent={recent?.features}
+            onChange={(ids) => onChange("featureIds", ids)}
+            onCreate={readOnly ? undefined : (name) => create(res.createFeature, name)}
+            addLabel={t("events.form.createFeature")}
+          />
+        </>
+      )}
+      <ChipCombobox
         label={t("events.form.targetGroups")}
         options={res.targetGroups.map((g) => ({ id: g.id, label: g.name }))}
         selected={value.targetGroupIds}
+        recent={recent?.targetGroups}
         onChange={(ids) => onChange("targetGroupIds", ids)}
         onCreate={
           readOnly || !canCreateTargetGroups
             ? undefined
             : (name) => create(res.createTargetGroup, name)
         }
-        createLabel={t("events.form.createTargetGroup")}
+        addLabel={t("events.form.createTargetGroup")}
         hint={
           targetGroupsHint ??
           t(audiencesOnly ? "events.notice.targetGroupsHint" : "events.form.targetGroupsHint")

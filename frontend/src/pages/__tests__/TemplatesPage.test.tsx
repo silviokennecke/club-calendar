@@ -6,6 +6,8 @@ import TemplatesPage from "../TemplatesPage";
 import TemplateEditPage from "../TemplateEditPage";
 import { BASE, PATTERN, groups, renderRoute } from "../events/__tests__/testUtils";
 import { mockApiGet } from "@/test/clubRole";
+import { AuthContext, type AuthContextValue } from "@/lib/auth-context";
+import { getRecentIds } from "@/lib/events/recent";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -232,8 +234,10 @@ describe("TemplateEditPage – new", () => {
     expect(apiPost).not.toHaveBeenCalled();
     await user.type(screen.getByLabelText(/Endzeit/), "21:00");
     await user.selectOptions(screen.getByLabelText(/Standardort/), "l2");
-    await user.click(await screen.findByRole("button", { name: "Bonusschießen" }));
-    await user.click(screen.getByRole("button", { name: "Erwachsene" }));
+    await user.click(await screen.findByRole("button", { name: "Neues Zusatzangebot anlegen" }));
+    await user.click(await screen.findByRole("option", { name: "Bonusschießen" }));
+    await user.click(screen.getByRole("button", { name: "Neue Gruppe anlegen" }));
+    await user.click(await screen.findByRole("option", { name: "Erwachsene" }));
     await user.click(screen.getByRole("button", { name: "Vorlage speichern" }));
 
     await waitFor(() => expect(apiPost).toHaveBeenCalled());
@@ -249,6 +253,24 @@ describe("TemplateEditPage – new", () => {
       note: "",
     });
     expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/templates`);
+  });
+
+  it("records the chosen extras and audiences as recently used only after saving", async () => {
+    const user = userEvent.setup();
+    apiPost.mockResolvedValue({ id: "t9" });
+    renderRoute(
+      route,
+      url,
+      <AuthContext.Provider value={{ user: { id: "u-recent" } } as unknown as AuthContextValue}>
+        <TemplateEditPage />
+      </AuthContext.Provider>,
+    );
+    await user.type(await screen.findByLabelText(/Name/, { selector: "input" }), "Abend");
+    await user.click(await screen.findByRole("button", { name: "Neues Zusatzangebot anlegen" }));
+    await user.click(await screen.findByRole("option", { name: "Bonusschießen" }));
+    expect(getRecentIds("u-recent", "features", "k1")).toEqual([]);
+    await user.click(screen.getByRole("button", { name: "Vorlage speichern" }));
+    await waitFor(() => expect(getRecentIds("u-recent", "features", "k1")).toEqual(["f1"]));
   });
 
   it("saves a template without times (events from it are all-day)", async () => {
