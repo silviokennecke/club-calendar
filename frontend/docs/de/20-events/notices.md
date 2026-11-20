@@ -36,7 +36,7 @@ Wie ein Termin ist ein Hinweis zuerst ein **Entwurf** und erscheint erst in den 
 
 ![Terminliste, gefiltert auf Hinweise](shot:notice-list)
 
-- **Webseite eines Feeds** und **Mein Abo** im Web: als einfacher Text, ohne Detailseite. Siehe [Die öffentliche Ansicht](help:publishing/public-view).
+- **Webseite eines Feeds** und **Mein Abo** im Web: als Text an ihren Tagen. Ein Klick auf einen Hinweis zeigt die Details, zum Kalender hinzufügen lässt er sich nicht. Siehe [Die öffentliche Ansicht](help:publishing/public-view).
 - **PDF:** gedruckt in den Layouts Quartalsübersicht, Monatsraster und Agenda, nicht in der Jahresübersicht. Siehe [Termine exportieren](help:organize/export).
 
 :::warning

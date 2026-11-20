@@ -36,7 +36,7 @@ Like an event, a notice starts as a **draft** and appears in the feeds only once
 
 ![Event list filtered to notices](shot:notice-list)
 
-- **Web page of a feed** and **My subscription** on the web: as plain text, without a detail page. See [The public view](help:publishing/public-view).
+- **Web page of a feed** and **My subscription** on the web: as text on their days. A click on a notice shows the details, but a notice cannot be added to your calendar. See [The public view](help:publishing/public-view).
 - **PDF:** printed in the layouts quarter overview, month grid and agenda, but not in the annual overview. See [Export events](help:organize/export).
 
 :::warning
