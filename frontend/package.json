@@ -28,7 +28,7 @@
     "clsx": "^2.1.1",
     "emoji-mart": "^5.6.0",
     "fuse.js": "^7.5.0",
-    "i18next": "^26.3.3",
+    "i18next": "^26.3.4",
     "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^1.17.0",
     "mapbox-gl": "^3.24.0",
